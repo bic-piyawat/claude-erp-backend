@@ -19,8 +19,7 @@ import { ConfigService } from '@nestjs/config';
 import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
-import { LoginResponseDto } from './dto/login-response.dto';
-import { MeResponseDto } from './dto/me-response.dto';
+import { LoginResponseDto, MeResponseDto } from './dto/login-response.dto';
 import {
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
