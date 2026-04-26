@@ -21,9 +21,23 @@ export interface SeedPrismaClient {
   user: {
     upsert: (args: {
       where: { email: string };
-      create: { id?: string; email: string; password: string };
-      update: Record<string, never>;
-    }) => Promise<{ id: string; email: string; password: string }>;
+      create: {
+        id?: string;
+        email: string;
+        password: string;
+        firstName: string;
+        lastName: string;
+        avatarUrl?: string | null;
+      };
+      update: { firstName: string; lastName: string };
+    }) => Promise<{
+      id: string;
+      email: string;
+      password: string;
+      firstName: string;
+      lastName: string;
+      avatarUrl: string | null;
+    }>;
   };
   membership: {
     upsert: (args: {
@@ -119,8 +133,13 @@ export async function runSeed(
   );
   const user = await prisma.user.upsert({
     where: { email: config.userEmail },
-    create: { email: config.userEmail, password: hashedPassword },
-    update: {},
+    create: {
+      email: config.userEmail,
+      password: hashedPassword,
+      firstName: 'Bic',
+      lastName: 'Piyawat',
+    },
+    update: { firstName: 'Bic', lastName: 'Piyawat' },
   });
 
   await prisma.membership.upsert({
