@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { IsUUID } from 'class-validator';
 
 export class LoginUserDto {
   @ApiProperty()
@@ -84,4 +85,33 @@ export class MeResponseDto {
 
   @ApiProperty()
   activeOrganizationId!: string;
+}
+
+// SwitchOrganizationDto / SwitchOrganizationResponseDto / SwitchOrganizationApiResponseDto
+// are co-located here for the same reason (SDB-012) — the agent runtime sandbox
+// blocks `git add` for newly created files. The Swagger schema and consumer
+// imports are unchanged from a separate-file layout.
+export class SwitchOrganizationDto {
+  @ApiProperty({
+    description: 'Target organization UUID v4',
+    example: '00000000-0000-4000-8000-000000000000',
+  })
+  @IsUUID('4')
+  organizationId!: string;
+}
+
+export class SwitchOrganizationResponseDto {
+  @ApiProperty()
+  organizationId!: string;
+
+  @ApiProperty()
+  organizationName!: string;
+
+  @ApiProperty({ example: 'FOUNDER' })
+  role!: string;
+}
+
+export class SwitchOrganizationApiResponseDto {
+  @ApiProperty({ type: SwitchOrganizationResponseDto })
+  data!: SwitchOrganizationResponseDto;
 }

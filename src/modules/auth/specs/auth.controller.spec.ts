@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Reflector } from '@nestjs/core';
+import { ForbiddenException } from '@nestjs/common';
 import type { Response } from 'express';
 import { AuthController } from '../auth.controller';
 import { AuthService, LoginResult } from '../auth.service';
 import { OrganizationGuard } from '../../../common/guards/organization.guard';
 import {
+  ACTIVE_ORG_COOKIE_NAME,
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
 } from '../../../common/constants/auth.constant';
@@ -29,6 +31,7 @@ describe('AuthController', () => {
             login: jest.fn(),
             getProfile: jest.fn(),
             listMemberships: jest.fn(),
+            switchOrganization: jest.fn(),
           },
         },
         {
@@ -167,6 +170,97 @@ describe('AuthController', () => {
       const guards = new Reflector().get<unknown[]>(
         '__guards__',
         controller.listMyMemberships,
+      );
+
+      expect((guards ?? []).some((g) => g === OrganizationGuard)).toBe(true);
+    });
+  });
+
+  describe('POST /auth/switch-org', () => {
+    it('sets active_org HttpOnly cookie and returns wrapped membership data', async () => {
+      const target = createMockMembership({
+        organizationId: '00000000-0000-4000-8000-000000000002',
+        organizationName: 'Globex LLC',
+        role: 'MEMBER',
+      });
+      service.switchOrganization.mockResolvedValue({
+        organizationId: target.organizationId,
+        organizationName: target.organizationName,
+        role: target.role,
+      });
+      const res = createMockResponse();
+      const req = {
+        user: {
+          userId: 'user-1',
+          organizationIds: [
+            '00000000-0000-4000-8000-000000000001',
+            '00000000-0000-4000-8000-000000000002',
+          ],
+        },
+        activeOrganizationId: '00000000-0000-4000-8000-000000000001',
+      } as unknown as Parameters<typeof controller.switchOrg>[1];
+
+      const body = await controller.switchOrg(
+        { organizationId: '00000000-0000-4000-8000-000000000002' },
+        req,
+        res,
+      );
+
+      expect(service.switchOrganization).toHaveBeenCalledWith(
+        'user-1',
+        [
+          '00000000-0000-4000-8000-000000000001',
+          '00000000-0000-4000-8000-000000000002',
+        ],
+        '00000000-0000-4000-8000-000000000002',
+      );
+      expect(res.cookie).toHaveBeenCalledWith(
+        ACTIVE_ORG_COOKIE_NAME,
+        '00000000-0000-4000-8000-000000000002',
+        expect.objectContaining({
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: false,
+          maxAge: JWT_COOKIE_MAX_AGE_MS,
+          path: '/',
+        }),
+      );
+      expect(body).toEqual({
+        data: {
+          organizationId: '00000000-0000-4000-8000-000000000002',
+          organizationName: 'Globex LLC',
+          role: 'MEMBER',
+        },
+      });
+    });
+
+    it('propagates ForbiddenException from the service and does not set the cookie', async () => {
+      service.switchOrganization.mockRejectedValue(
+        new ForbiddenException('Forbidden organization'),
+      );
+      const res = createMockResponse();
+      const req = {
+        user: {
+          userId: 'user-1',
+          organizationIds: ['00000000-0000-4000-8000-000000000001'],
+        },
+        activeOrganizationId: '00000000-0000-4000-8000-000000000001',
+      } as unknown as Parameters<typeof controller.switchOrg>[1];
+
+      await expect(
+        controller.switchOrg(
+          { organizationId: '00000000-0000-4000-8000-000000000002' },
+          req,
+          res,
+        ),
+      ).rejects.toThrow(ForbiddenException);
+      expect(res.cookie).not.toHaveBeenCalled();
+    });
+
+    it('applies OrganizationGuard to the switchOrg handler', () => {
+      const guards = new Reflector().get<unknown[]>(
+        '__guards__',
+        controller.switchOrg,
       );
 
       expect((guards ?? []).some((g) => g === OrganizationGuard)).toBe(true);
