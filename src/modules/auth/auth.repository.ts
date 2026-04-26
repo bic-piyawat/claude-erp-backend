@@ -24,6 +24,12 @@ export interface UserProfile {
   avatarUrl: string | null;
 }
 
+export interface MembershipDto {
+  organizationId: string;
+  organizationName: string;
+  role: string;
+}
+
 @Injectable()
 export class AuthRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -90,5 +96,22 @@ export class AuthRepository {
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
     };
+  }
+
+  async findMembershipsByUserId(userId: string): Promise<MembershipDto[]> {
+    const rows = await this.prisma.membership.findMany({
+      where: { userId },
+      select: {
+        organizationId: true,
+        role: true,
+        organization: { select: { name: true } },
+      },
+    });
+
+    return rows.map((row) => ({
+      organizationId: row.organizationId,
+      organizationName: row.organization.name,
+      role: row.role,
+    }));
   }
 }

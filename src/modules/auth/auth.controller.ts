@@ -21,6 +21,10 @@ import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto, MeResponseDto } from './dto/login-response.dto';
 import {
+  MembershipResponseDto,
+  MembershipsListResponseDto,
+} from './dto/membership-response.dto';
+import {
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
 } from '../../common/constants/auth.constant';
@@ -87,5 +91,25 @@ export class AuthController {
       organizationIds: req.user!.organizationIds,
       activeOrganizationId: req.activeOrganizationId!,
     };
+  }
+
+  @Get('me/memberships')
+  @UseGuards(OrganizationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth(AUTH_COOKIE_NAME)
+  @ApiOperation({
+    summary: "List the authenticated user's memberships across organizations",
+  })
+  @ApiResponse({ status: 200, type: MembershipsListResponseDto })
+  @ApiResponse({ status: 400, description: 'Active organization not selected' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden organization' })
+  async listMyMemberships(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ data: MembershipResponseDto[] }> {
+    const memberships = await this.authService.listMemberships(
+      req.user!.userId,
+    );
+    return { data: memberships };
   }
 }

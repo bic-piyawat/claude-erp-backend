@@ -5,7 +5,7 @@ import {
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { AuthRepository, UserProfile } from './auth.repository';
+import { AuthRepository, MembershipDto, UserProfile } from './auth.repository';
 
 export interface LoginInput {
   email: string;
@@ -76,5 +76,15 @@ export class AuthService {
       throw new NotFoundException(USER_NOT_FOUND);
     }
     return profile;
+  }
+
+  async listMemberships(userId: string): Promise<MembershipDto[]> {
+    const memberships =
+      await this.authRepository.findMembershipsByUserId(userId);
+    return [...memberships].sort((a, b) =>
+      a.organizationName.localeCompare(b.organizationName, undefined, {
+        sensitivity: 'base',
+      }),
+    );
   }
 }
