@@ -20,6 +20,7 @@ import type { Response } from 'express';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import { LoginResponseDto } from './dto/login-response.dto';
+import { MeResponseDto } from './dto/me-response.dto';
 import {
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
@@ -69,28 +70,21 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiCookieAuth(AUTH_COOKIE_NAME)
   @ApiOperation({
-    summary: 'Return authenticated user and active organization',
+    summary: 'Return authenticated user profile and active organization',
   })
-  @ApiResponse({
-    status: 200,
-    schema: {
-      example: {
-        userId: 'user-uuid',
-        organizationIds: ['org-1', 'org-2'],
-        activeOrganizationId: 'org-1',
-      },
-    },
-  })
+  @ApiResponse({ status: 200, type: MeResponseDto })
   @ApiResponse({ status: 400, description: 'Active organization not selected' })
   @ApiResponse({ status: 401, description: 'Unauthorized' })
   @ApiResponse({ status: 403, description: 'Forbidden organization' })
-  me(@Req() req: AuthenticatedRequest): {
-    userId: string;
-    organizationIds: string[];
-    activeOrganizationId: string;
-  } {
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async me(@Req() req: AuthenticatedRequest): Promise<MeResponseDto> {
+    const profile = await this.authService.getProfile(req.user!.userId);
     return {
-      userId: req.user!.userId,
+      userId: profile.userId,
+      email: profile.email,
+      firstName: profile.firstName,
+      lastName: profile.lastName,
+      avatarUrl: profile.avatarUrl,
       organizationIds: req.user!.organizationIds,
       activeOrganizationId: req.activeOrganizationId!,
     };

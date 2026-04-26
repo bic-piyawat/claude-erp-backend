@@ -4,6 +4,9 @@ export interface MockUserWithMemberships {
   id: string;
   email: string;
   password: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
   isDeleted: boolean;
   memberships: {
     organizationId: string;
@@ -19,6 +22,9 @@ export function createMockUserWithMemberships(
     id: 'user-1',
     email: 'founder@acme.test',
     password: '$2b$10$hashedpasswordplaceholder',
+    firstName: 'Bic',
+    lastName: 'Piyawat',
+    avatarUrl: null,
     isDeleted: false,
     memberships: [
       {
@@ -27,6 +33,27 @@ export function createMockUserWithMemberships(
         organization: { id: 'org-1', name: 'Acme Corporation' },
       },
     ],
+    ...overrides,
+  };
+}
+
+export interface MockUserProfile {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+}
+
+export function createMockUserProfile(
+  overrides: Partial<MockUserProfile> = {},
+): MockUserProfile {
+  return {
+    userId: 'user-1',
+    email: 'founder@acme.test',
+    firstName: 'Bic',
+    lastName: 'Piyawat',
+    avatarUrl: null,
     ...overrides,
   };
 }

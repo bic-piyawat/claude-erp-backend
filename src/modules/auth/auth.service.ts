@@ -1,20 +1,33 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { AuthRepository } from './auth.repository';
+import { AuthRepository, UserProfile } from './auth.repository';
 
 export interface LoginInput {
   email: string;
   password: string;
 }
 
+export interface LoginUser {
+  id: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+}
+
 export interface LoginResult {
   accessToken: string;
-  user: { id: string; email: string };
+  user: LoginUser;
   organizations: { id: string; name: string; role: string }[];
 }
 
 const INVALID_CREDENTIALS = 'Invalid credentials';
+const USER_NOT_FOUND = 'User not found';
 
 @Injectable()
 export class AuthService {
@@ -42,12 +55,26 @@ export class AuthService {
 
     return {
       accessToken,
-      user: { id: user.id, email: user.email },
+      user: {
+        id: user.id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        avatarUrl: user.avatarUrl,
+      },
       organizations: user.memberships.map((m) => ({
         id: m.organization.id,
         name: m.organization.name,
         role: m.role,
       })),
     };
+  }
+
+  async getProfile(userId: string): Promise<UserProfile> {
+    const profile = await this.authRepository.findUserProfileById(userId);
+    if (!profile) {
+      throw new NotFoundException(USER_NOT_FOUND);
+    }
+    return profile;
   }
 }

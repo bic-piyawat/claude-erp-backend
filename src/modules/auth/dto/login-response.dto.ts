@@ -6,6 +6,15 @@ export class LoginUserDto {
 
   @ApiProperty()
   email!: string;
+
+  @ApiProperty()
+  firstName!: string;
+
+  @ApiProperty()
+  lastName!: string;
+
+  @ApiProperty({ nullable: true, type: String })
+  avatarUrl!: string | null;
 }
 
 export class LoginOrganizationDto {

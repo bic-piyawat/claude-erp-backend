@@ -5,12 +5,23 @@ export interface UserWithMemberships {
   id: string;
   email: string;
   password: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
   isDeleted: boolean;
   memberships: {
     organizationId: string;
     role: string;
     organization: { id: string; name: string };
   }[];
+}
+
+export interface UserProfile {
+  userId: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
 }
 
 @Injectable()
@@ -22,9 +33,20 @@ export class AuthRepository {
   ): Promise<UserWithMemberships | null> {
     const user = await this.prisma.user.findFirst({
       where: { email, isDeleted: false },
-      include: {
+      select: {
+        id: true,
+        email: true,
+        password: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+        isDeleted: true,
         memberships: {
-          include: { organization: { select: { id: true, name: true } } },
+          select: {
+            organizationId: true,
+            role: true,
+            organization: { select: { id: true, name: true } },
+          },
         },
       },
     });
@@ -35,12 +57,38 @@ export class AuthRepository {
       id: user.id,
       email: user.email,
       password: user.password,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
       isDeleted: user.isDeleted,
       memberships: user.memberships.map((m) => ({
         organizationId: m.organizationId,
         role: m.role,
         organization: { id: m.organization.id, name: m.organization.name },
       })),
+    };
+  }
+
+  async findUserProfileById(userId: string): Promise<UserProfile | null> {
+    const user = await this.prisma.user.findFirst({
+      where: { id: userId, isDeleted: false },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true,
+        avatarUrl: true,
+      },
+    });
+
+    if (!user) return null;
+
+    return {
+      userId: user.id,
+      email: user.email,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      avatarUrl: user.avatarUrl,
     };
   }
 }
