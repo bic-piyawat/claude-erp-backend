@@ -7,6 +7,7 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthRepository, MembershipDto, UserProfile } from './auth.repository';
+import { NavigationItem, navigationForRole } from './navigation.constant';
 
 export interface LoginInput {
   email: string;
@@ -31,6 +32,8 @@ const INVALID_CREDENTIALS = 'Invalid credentials';
 const USER_NOT_FOUND = 'User not found';
 const FORBIDDEN_ORGANIZATION = 'Forbidden organization';
 const MEMBERSHIP_NOT_FOUND = 'Membership not found';
+const NAVIGATION_MEMBERSHIP_NOT_FOUND =
+  'Membership not found for active organization';
 
 export interface SwitchOrganizationResult {
   organizationId: string;
@@ -120,5 +123,19 @@ export class AuthService {
       organizationName: target.organizationName,
       role: target.role,
     };
+  }
+
+  async getNavigation(
+    userId: string,
+    activeOrganizationId: string,
+  ): Promise<NavigationItem[]> {
+    const role = await this.authRepository.findRoleForUserInOrg(
+      userId,
+      activeOrganizationId,
+    );
+    if (!role) {
+      throw new NotFoundException(NAVIGATION_MEMBERSHIP_NOT_FOUND);
+    }
+    return navigationForRole(role);
   }
 }

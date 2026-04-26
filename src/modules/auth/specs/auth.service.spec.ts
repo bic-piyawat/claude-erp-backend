@@ -30,6 +30,7 @@ describe('AuthService', () => {
             findActiveUserByEmail: jest.fn(),
             findUserProfileById: jest.fn(),
             findMembershipsByUserId: jest.fn(),
+            findRoleForUserInOrg: jest.fn(),
           },
         },
         {
@@ -228,6 +229,70 @@ describe('AuthService', () => {
       await expect(
         service.switchOrganization('user-1', ['org-1', 'org-2'], 'org-2'),
       ).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getNavigation', () => {
+    it('FOUNDER → base + customFields + platformSettings', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue('FOUNDER');
+
+      const items = await service.getNavigation('u1', 'org-1');
+
+      expect(repository.findRoleForUserInOrg).toHaveBeenCalledWith(
+        'u1',
+        'org-1',
+      );
+      expect(items.map((i) => i.key)).toEqual([
+        'overview',
+        'projects',
+        'customFields',
+        'platformSettings',
+      ]);
+    });
+
+    it('SUPER_ADMIN → base + customFields + orgSettings', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue('SUPER_ADMIN');
+
+      const items = await service.getNavigation('u1', 'org-1');
+
+      expect(items.map((i) => i.key)).toEqual([
+        'overview',
+        'projects',
+        'customFields',
+        'orgSettings',
+      ]);
+    });
+
+    it('ADMIN → base only', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue('ADMIN');
+
+      const items = await service.getNavigation('u1', 'org-1');
+
+      expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
+    });
+
+    it('MEMBER → base only', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue('MEMBER');
+
+      const items = await service.getNavigation('u1', 'org-1');
+
+      expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
+    });
+
+    it('unrecognised role → falls back to base (defensive, never throws)', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue('SOME_FUTURE_ROLE');
+
+      const items = await service.getNavigation('u1', 'org-1');
+
+      expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
+    });
+
+    it('throws NotFoundException when no membership row exists for the active org', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue(null);
+
+      await expect(service.getNavigation('u1', 'org-1')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });

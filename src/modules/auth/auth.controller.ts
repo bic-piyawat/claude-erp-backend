@@ -24,6 +24,8 @@ import {
   MembershipResponseDto,
   MembershipsListResponseDto,
   MeResponseDto,
+  NavigationItemDto,
+  NavigationListResponseDto,
   SwitchOrganizationApiResponseDto,
   SwitchOrganizationDto,
 } from './dto/login-response.dto';
@@ -150,5 +152,28 @@ export class AuthController {
     });
 
     return { data: result };
+  }
+
+  @Get('me/navigation')
+  @UseGuards(OrganizationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth(AUTH_COOKIE_NAME)
+  @ApiOperation({
+    summary:
+      'Return navigation items for the active org (filtered by role, hard-coded map)',
+  })
+  @ApiResponse({ status: 200, type: NavigationListResponseDto })
+  @ApiResponse({ status: 400, description: 'Active organization not selected' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden organization' })
+  @ApiResponse({ status: 404, description: 'Membership not found' })
+  async getMyNavigation(
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ data: NavigationItemDto[] }> {
+    const items = await this.authService.getNavigation(
+      req.user!.userId,
+      req.activeOrganizationId!,
+    );
+    return { data: items };
   }
 }

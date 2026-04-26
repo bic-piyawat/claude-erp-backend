@@ -114,4 +114,15 @@ export class AuthRepository {
       role: row.role,
     }));
   }
+
+  async findRoleForUserInOrg(
+    userId: string,
+    organizationId: string,
+  ): Promise<string | null> {
+    const row = await this.prisma.membership.findFirst({
+      where: { userId, organizationId },
+      select: { role: true },
+    });
+    return row?.role ?? null;
+  }
 }
