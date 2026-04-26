@@ -1,4 +1,5 @@
 import {
+  ForbiddenException,
   Injectable,
   NotFoundException,
   UnauthorizedException,
@@ -28,6 +29,14 @@ export interface LoginResult {
 
 const INVALID_CREDENTIALS = 'Invalid credentials';
 const USER_NOT_FOUND = 'User not found';
+const FORBIDDEN_ORGANIZATION = 'Forbidden organization';
+const MEMBERSHIP_NOT_FOUND = 'Membership not found';
+
+export interface SwitchOrganizationResult {
+  organizationId: string;
+  organizationName: string;
+  role: string;
+}
 
 @Injectable()
 export class AuthService {
@@ -86,5 +95,30 @@ export class AuthService {
         sensitivity: 'base',
       }),
     );
+  }
+
+  async switchOrganization(
+    userId: string,
+    organizationIds: string[],
+    targetOrganizationId: string,
+  ): Promise<SwitchOrganizationResult> {
+    if (!organizationIds.includes(targetOrganizationId)) {
+      throw new ForbiddenException(FORBIDDEN_ORGANIZATION);
+    }
+
+    const memberships =
+      await this.authRepository.findMembershipsByUserId(userId);
+    const target = memberships.find(
+      (m) => m.organizationId === targetOrganizationId,
+    );
+    if (!target) {
+      throw new NotFoundException(MEMBERSHIP_NOT_FOUND);
+    }
+
+    return {
+      organizationId: target.organizationId,
+      organizationName: target.organizationName,
+      role: target.role,
+    };
   }
 }

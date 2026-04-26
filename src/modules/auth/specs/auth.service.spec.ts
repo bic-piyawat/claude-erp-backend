@@ -1,6 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import { NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
 import { AuthRepository } from '../auth.repository';
@@ -181,6 +185,49 @@ describe('AuthService', () => {
       repository.findMembershipsByUserId.mockResolvedValue([]);
 
       expect(await service.listMemberships('user-with-none')).toEqual([]);
+    });
+  });
+
+  describe('switchOrganization', () => {
+    it('returns the target membership when the user belongs to it', async () => {
+      const target = createMockMembership({
+        organizationId: 'org-2',
+        organizationName: 'Globex LLC',
+        role: 'MEMBER',
+      });
+      repository.findMembershipsByUserId.mockResolvedValue([
+        createMockMembership(),
+        target,
+      ]);
+
+      const result = await service.switchOrganization(
+        'user-1',
+        ['org-1', 'org-2'],
+        'org-2',
+      );
+
+      expect(result).toEqual({
+        organizationId: 'org-2',
+        organizationName: 'Globex LLC',
+        role: 'MEMBER',
+      });
+    });
+
+    it('throws ForbiddenException when target org is not in the JWT organizationIds list', async () => {
+      await expect(
+        service.switchOrganization('user-1', ['org-1'], 'org-2'),
+      ).rejects.toThrow(ForbiddenException);
+      expect(repository.findMembershipsByUserId).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when JWT lists the org but membership row is missing', async () => {
+      repository.findMembershipsByUserId.mockResolvedValue([
+        createMockMembership(),
+      ]);
+
+      await expect(
+        service.switchOrganization('user-1', ['org-1', 'org-2'], 'org-2'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

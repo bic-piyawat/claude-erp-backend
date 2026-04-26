@@ -24,8 +24,11 @@ import {
   MembershipResponseDto,
   MembershipsListResponseDto,
   MeResponseDto,
+  SwitchOrganizationApiResponseDto,
+  SwitchOrganizationDto,
 } from './dto/login-response.dto';
 import {
+  ACTIVE_ORG_COOKIE_NAME,
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
 } from '../../common/constants/auth.constant';
@@ -112,5 +115,40 @@ export class AuthController {
       req.user!.userId,
     );
     return { data: memberships };
+  }
+
+  @Post('switch-org')
+  @UseGuards(OrganizationGuard)
+  @HttpCode(HttpStatus.OK)
+  @ApiCookieAuth(AUTH_COOKIE_NAME)
+  @ApiOperation({
+    summary: 'Switch active organization (cookie-only, JWT untouched)',
+  })
+  @ApiResponse({ status: 200, type: SwitchOrganizationApiResponseDto })
+  @ApiResponse({ status: 400, description: 'Invalid organization UUID' })
+  @ApiResponse({ status: 401, description: 'Unauthorized' })
+  @ApiResponse({ status: 403, description: 'Forbidden organization' })
+  async switchOrg(
+    @Body() dto: SwitchOrganizationDto,
+    @Req() req: AuthenticatedRequest,
+    @Res({ passthrough: true }) res: Response,
+  ): Promise<SwitchOrganizationApiResponseDto> {
+    const result = await this.authService.switchOrganization(
+      req.user!.userId,
+      req.user!.organizationIds,
+      dto.organizationId,
+    );
+
+    const secure =
+      this.configService.get<string>('COOKIE_SECURE', 'false') === 'true';
+    res.cookie(ACTIVE_ORG_COOKIE_NAME, dto.organizationId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure,
+      maxAge: JWT_COOKIE_MAX_AGE_MS,
+      path: '/',
+    });
+
+    return { data: result };
   }
 }
