@@ -9,6 +9,7 @@ import {
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
 } from '../../../common/constants/auth.constant';
+import { createMockUserProfile } from '../mocks/auth.mock';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -18,7 +19,10 @@ describe('AuthController', () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AuthController],
       providers: [
-        { provide: AuthService, useValue: { login: jest.fn() } },
+        {
+          provide: AuthService,
+          useValue: { login: jest.fn(), getProfile: jest.fn() },
+        },
         {
           provide: ConfigService,
           useValue: {
@@ -46,16 +50,29 @@ describe('AuthController', () => {
   }
 
   describe('GET /auth/me', () => {
-    it('should echo userId, organizationIds, and activeOrganizationId from the request', () => {
+    it('should merge profile fields with org context from the request', async () => {
+      const profile = createMockUserProfile({
+        userId: 'user-1',
+        email: 'founder@acme.test',
+        firstName: 'Bic',
+        lastName: 'Piyawat',
+        avatarUrl: null,
+      });
+      service.getProfile.mockResolvedValue(profile);
       const req = {
         user: { userId: 'user-1', organizationIds: ['org-1', 'org-2'] },
         activeOrganizationId: 'org-2',
       } as unknown as Parameters<typeof controller.me>[0];
 
-      const result = controller.me(req);
+      const result = await controller.me(req);
 
+      expect(service.getProfile).toHaveBeenCalledWith('user-1');
       expect(result).toEqual({
         userId: 'user-1',
+        email: 'founder@acme.test',
+        firstName: 'Bic',
+        lastName: 'Piyawat',
+        avatarUrl: null,
         organizationIds: ['org-1', 'org-2'],
         activeOrganizationId: 'org-2',
       });
@@ -67,7 +84,13 @@ describe('AuthController', () => {
       // Arrange
       const loginResult: LoginResult = {
         accessToken: 'jwt.signed.value',
-        user: { id: 'user-1', email: 'founder@acme.test' },
+        user: {
+          id: 'user-1',
+          email: 'founder@acme.test',
+          firstName: 'Bic',
+          lastName: 'Piyawat',
+          avatarUrl: null,
+        },
         organizations: [{ id: 'org-1', name: 'Acme', role: 'FOUNDER' }],
       };
       service.login.mockResolvedValue(loginResult);
@@ -96,7 +119,13 @@ describe('AuthController', () => {
         }),
       );
       expect(body).toEqual({
-        user: { id: 'user-1', email: 'founder@acme.test' },
+        user: {
+          id: 'user-1',
+          email: 'founder@acme.test',
+          firstName: 'Bic',
+          lastName: 'Piyawat',
+          avatarUrl: null,
+        },
         organizations: [{ id: 'org-1', name: 'Acme', role: 'FOUNDER' }],
       });
       // The raw JWT must never appear in the response body

@@ -1,10 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { JwtService } from '@nestjs/jwt';
-import { UnauthorizedException } from '@nestjs/common';
+import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
 import { AuthRepository } from '../auth.repository';
-import { createMockUserWithMemberships } from '../mocks/auth.mock';
+import {
+  createMockUserProfile,
+  createMockUserWithMemberships,
+} from '../mocks/auth.mock';
 import { BCRYPT_SALT_ROUNDS } from '../../../common/constants/auth.constant';
 
 describe('AuthService', () => {
@@ -18,7 +21,10 @@ describe('AuthService', () => {
         AuthService,
         {
           provide: AuthRepository,
-          useValue: { findActiveUserByEmail: jest.fn() },
+          useValue: {
+            findActiveUserByEmail: jest.fn(),
+            findUserProfileById: jest.fn(),
+          },
         },
         {
           provide: JwtService,
@@ -49,7 +55,13 @@ describe('AuthService', () => {
 
       // Assert
       expect(result.accessToken).toBe('signed.jwt.token');
-      expect(result.user).toEqual({ id: user.id, email: user.email });
+      expect(result.user).toEqual({
+        id: user.id,
+        email: user.email,
+        firstName: 'Bic',
+        lastName: 'Piyawat',
+        avatarUrl: null,
+      });
       expect(result.organizations).toEqual([
         { id: 'org-1', name: 'Acme Corporation', role: 'FOUNDER' },
       ]);
@@ -114,6 +126,34 @@ describe('AuthService', () => {
         sub: user.id,
         organizationIds: ['org-a', 'org-b'],
       });
+    });
+  });
+
+  describe('getProfile', () => {
+    it('returns profile fields for active user', async () => {
+      const profile = createMockUserProfile();
+      repository.findUserProfileById.mockResolvedValue(profile);
+
+      const result = await service.getProfile(profile.userId);
+
+      expect(repository.findUserProfileById).toHaveBeenCalledWith(
+        profile.userId,
+      );
+      expect(result).toEqual({
+        userId: profile.userId,
+        email: profile.email,
+        firstName: profile.firstName,
+        lastName: profile.lastName,
+        avatarUrl: profile.avatarUrl,
+      });
+    });
+
+    it('throws NotFoundException when user is missing', async () => {
+      repository.findUserProfileById.mockResolvedValue(null);
+
+      await expect(service.getProfile('missing-user')).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 });
