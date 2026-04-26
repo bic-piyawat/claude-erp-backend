@@ -5,6 +5,7 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from '../auth.service';
 import { AuthRepository } from '../auth.repository';
 import {
+  createMockMembership,
   createMockUserProfile,
   createMockUserWithMemberships,
 } from '../mocks/auth.mock';
@@ -24,6 +25,7 @@ describe('AuthService', () => {
           useValue: {
             findActiveUserByEmail: jest.fn(),
             findUserProfileById: jest.fn(),
+            findMembershipsByUserId: jest.fn(),
           },
         },
         {
@@ -154,6 +156,31 @@ describe('AuthService', () => {
       await expect(service.getProfile('missing-user')).rejects.toThrow(
         NotFoundException,
       );
+    });
+  });
+
+  describe('listMemberships', () => {
+    it('returns memberships sorted alphabetically by organizationName (case-insensitive)', async () => {
+      repository.findMembershipsByUserId.mockResolvedValue([
+        createMockMembership({ organizationName: 'zeta industries' }),
+        createMockMembership({ organizationName: 'Acme Corporation' }),
+        createMockMembership({ organizationName: 'beta LLC' }),
+      ]);
+
+      const result = await service.listMemberships('user-1');
+
+      expect(repository.findMembershipsByUserId).toHaveBeenCalledWith('user-1');
+      expect(result.map((m) => m.organizationName)).toEqual([
+        'Acme Corporation',
+        'beta LLC',
+        'zeta industries',
+      ]);
+    });
+
+    it('returns an empty array when the user has no memberships', async () => {
+      repository.findMembershipsByUserId.mockResolvedValue([]);
+
+      expect(await service.listMemberships('user-with-none')).toEqual([]);
     });
   });
 });

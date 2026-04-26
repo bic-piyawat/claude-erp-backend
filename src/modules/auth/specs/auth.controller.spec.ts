@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { Reflector } from '@nestjs/core';
 import type { Response } from 'express';
 import { AuthController } from '../auth.controller';
 import { AuthService, LoginResult } from '../auth.service';
@@ -9,7 +10,10 @@ import {
   AUTH_COOKIE_NAME,
   JWT_COOKIE_MAX_AGE_MS,
 } from '../../../common/constants/auth.constant';
-import { createMockUserProfile } from '../mocks/auth.mock';
+import {
+  createMockMembership,
+  createMockUserProfile,
+} from '../mocks/auth.mock';
 
 describe('AuthController', () => {
   let controller: AuthController;
@@ -21,7 +25,11 @@ describe('AuthController', () => {
       providers: [
         {
           provide: AuthService,
-          useValue: { login: jest.fn(), getProfile: jest.fn() },
+          useValue: {
+            login: jest.fn(),
+            getProfile: jest.fn(),
+            listMemberships: jest.fn(),
+          },
         },
         {
           provide: ConfigService,
@@ -130,6 +138,38 @@ describe('AuthController', () => {
       });
       // The raw JWT must never appear in the response body
       expect(JSON.stringify(body)).not.toContain('jwt.signed.value');
+    });
+  });
+
+  describe('GET /auth/me/memberships', () => {
+    it('returns the service results wrapped in { data } preserving sort order', async () => {
+      const sorted = [
+        createMockMembership({ organizationName: 'Acme Corporation' }),
+        createMockMembership({
+          organizationId: 'org-g',
+          organizationName: 'Globex LLC',
+          role: 'MEMBER',
+        }),
+      ];
+      service.listMemberships.mockResolvedValue(sorted);
+      const req = {
+        user: { userId: 'user-1', organizationIds: ['org-1', 'org-g'] },
+        activeOrganizationId: 'org-1',
+      } as unknown as Parameters<typeof controller.listMyMemberships>[0];
+
+      const result = await controller.listMyMemberships(req);
+
+      expect(service.listMemberships).toHaveBeenCalledWith('user-1');
+      expect(result).toEqual({ data: sorted });
+    });
+
+    it('applies OrganizationGuard to the listMyMemberships handler', () => {
+      const guards = new Reflector().get<unknown[]>(
+        '__guards__',
+        controller.listMyMemberships,
+      );
+
+      expect((guards ?? []).some((g) => g === OrganizationGuard)).toBe(true);
     });
   });
 });

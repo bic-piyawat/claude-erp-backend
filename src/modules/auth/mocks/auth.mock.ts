@@ -70,3 +70,20 @@ export function createMockLoginDto(
     ...overrides,
   };
 }
+
+export interface MockMembership {
+  organizationId: string;
+  organizationName: string;
+  role: string;
+}
+
+export function createMockMembership(
+  overrides: Partial<MockMembership> = {},
+): MockMembership {
+  return {
+    organizationId: 'org-1',
+    organizationName: 'Acme Corporation',
+    role: MembershipRoleEnum.FOUNDER,
+    ...overrides,
+  };
+}
