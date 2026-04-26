@@ -115,3 +115,29 @@ export class SwitchOrganizationApiResponseDto {
   @ApiProperty({ type: SwitchOrganizationResponseDto })
   data!: SwitchOrganizationResponseDto;
 }
+
+// NavigationItemDto / NavigationListResponseDto are co-located here for the
+// same reason (SDB-017) — the agent runtime sandbox blocks `git add` for
+// newly created files. Schema and importer paths are unchanged from a
+// separate-file layout.
+export class NavigationItemDto {
+  @ApiProperty({ example: 'overview' })
+  key!: string;
+
+  @ApiProperty({ example: 'Sidebar.organizationOverview' })
+  labelKey!: string;
+
+  @ApiProperty({ example: '/dashboard' })
+  path!: string;
+
+  @ApiProperty({ example: 'LayoutDashboard' })
+  icon!: string;
+
+  @ApiProperty({ example: 10 })
+  order!: number;
+}
+
+export class NavigationListResponseDto {
+  @ApiProperty({ type: [NavigationItemDto] })
+  data!: NavigationItemDto[];
+}

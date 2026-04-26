@@ -32,6 +32,7 @@ describe('AuthController', () => {
             getProfile: jest.fn(),
             listMemberships: jest.fn(),
             switchOrganization: jest.fn(),
+            getNavigation: jest.fn(),
           },
         },
         {
@@ -261,6 +262,46 @@ describe('AuthController', () => {
       const guards = new Reflector().get<unknown[]>(
         '__guards__',
         controller.switchOrg,
+      );
+
+      expect((guards ?? []).some((g) => g === OrganizationGuard)).toBe(true);
+    });
+  });
+
+  describe('GET /auth/me/navigation', () => {
+    it('returns the service result wrapped in { data } using the active org from the request', async () => {
+      const items = [
+        {
+          key: 'overview',
+          labelKey: 'Sidebar.organizationOverview',
+          path: '/dashboard',
+          icon: 'LayoutDashboard',
+          order: 10,
+        },
+        {
+          key: 'projects',
+          labelKey: 'Sidebar.projects',
+          path: '/projects',
+          icon: 'FolderKanban',
+          order: 20,
+        },
+      ];
+      service.getNavigation.mockResolvedValue(items);
+      const req = {
+        user: { userId: 'user-1', organizationIds: ['org-1', 'org-2'] },
+        activeOrganizationId: 'org-2',
+      } as unknown as Parameters<typeof controller.getMyNavigation>[0];
+
+      const result = await controller.getMyNavigation(req);
+
+      expect(service.getNavigation).toHaveBeenCalledWith('user-1', 'org-2');
+      expect(result).toEqual({ data: items });
+    });
+
+    it('applies OrganizationGuard to the getMyNavigation handler', () => {
+      const guards = new Reflector().get<unknown[]>(
+        '__guards__',
+        controller.getMyNavigation,
       );
 
       expect((guards ?? []).some((g) => g === OrganizationGuard)).toBe(true);
