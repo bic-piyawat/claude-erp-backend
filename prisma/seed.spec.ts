@@ -3,7 +3,14 @@ import { runSeed, SeedConfig, SeedPrismaClient } from './seed.runner';
 import { MembershipRoleEnum } from '../src/common/enums/membership-role.enum';
 
 type CapturedOrg = { id: string; name: string };
-type CapturedUser = { id: string; email: string; password: string };
+type CapturedUser = {
+  id: string;
+  email: string;
+  password: string;
+  firstName: string;
+  lastName: string;
+  avatarUrl: string | null;
+};
 type CapturedMembership = {
   id: string;
   userId: string;
@@ -39,13 +46,20 @@ function createInMemoryPrisma(): {
       }),
     },
     user: {
-      upsert: jest.fn(async ({ where, create }) => {
+      upsert: jest.fn(async ({ where, create, update }) => {
         const existing = state.users.find((u) => u.email === where.email);
-        if (existing) return existing;
+        if (existing) {
+          existing.firstName = update.firstName;
+          existing.lastName = update.lastName;
+          return existing;
+        }
         const created: CapturedUser = {
           id: create.id ?? `user-${state.users.length + 1}`,
           email: create.email,
           password: create.password,
+          firstName: create.firstName,
+          lastName: create.lastName,
+          avatarUrl: create.avatarUrl ?? null,
         };
         state.users.push(created);
         return created;
@@ -112,6 +126,34 @@ describe('runSeed', () => {
 
     expect(state.users).toHaveLength(1);
     expect(state.users[0].email).toBe('founder@acme.test');
+  });
+
+  it('should seed founder with firstName + lastName', async () => {
+    // Arrange
+    const { client, state } = createInMemoryPrisma();
+
+    // Act
+    await runSeed(client, buildConfig());
+
+    // Assert
+    expect(state.users).toHaveLength(1);
+    expect(state.users[0].firstName).toBe('Bic');
+    expect(state.users[0].lastName).toBe('Piyawat');
+  });
+
+  it('should respect upsert idempotency on second run (founder profile fields)', async () => {
+    // Arrange
+    const { client, state } = createInMemoryPrisma();
+    const config = buildConfig();
+
+    // Act
+    await runSeed(client, config);
+    await runSeed(client, config);
+
+    // Assert
+    expect(state.users).toHaveLength(1);
+    expect(state.users[0].firstName).toBe('Bic');
+    expect(state.users[0].lastName).toBe('Piyawat');
   });
 
   it('should bcrypt-hash the user password (never store plaintext)', async () => {
