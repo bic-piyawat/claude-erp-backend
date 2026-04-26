@@ -1,0 +1,329 @@
+// Prisma schema for ERP Login Module (multi-organization)
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Organization {
+  id                     String                  @id @default(uuid())
+  name                   String                  @unique
+  memberships            Membership[]
+  stages                 Stage[]
+  customers              Customer[]
+  suppliers              Supplier[]
+  products               Product[]
+  projects               Project[]
+  attachments            Attachment[]
+  customFieldDefinitions CustomFieldDefinition[]
+  auditLogs              AuditLog[]
+  settings               OrganizationSettings?
+
+  @@map("organizations")
+}
+
+model User {
+  id                   String                @id @default(uuid())
+  email                String                @unique
+  password             String
+  isDeleted            Boolean               @default(false)
+  memberships          Membership[]
+  ownedProjects        Project[]
+  uploadedAttachments  Attachment[]
+  auditLogs            AuditLog[]
+  createdBudgets       Budget[]
+  stageHistoryChanges  ProjectStageHistory[]
+
+  @@map("users")
+}
+
+model Membership {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  role           String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@map("memberships")
+}
+
+enum Role {
+  FOUNDER
+  ADMIN
+  MEMBER
+  SUPER_ADMIN
+}
+
+model OrganizationSettings {
+  id             String       @id @default(uuid())
+  organizationId String       @unique
+  vatRate        Float        @default(7)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+}
+
+model Stage {
+  id             String                @id @default(uuid())
+  name           String
+  order          Int
+  isStandard     Boolean               @default(false)
+  organizationId String
+  isDeleted      Boolean               @default(false)
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  projects       Project[]
+  fromHistory    ProjectStageHistory[] @relation("FromStage")
+  toHistory      ProjectStageHistory[] @relation("ToStage")
+
+  @@index([organizationId])
+}
+
+model Customer {
+  id             String    @id @default(uuid())
+  name           String
+  taxId          String?
+  phone          String?
+  email          String?
+  address        String?
+  organizationId String
+  isDeleted      Boolean   @default(false)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  projects       Project[]
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model Supplier {
+  id             String     @id @default(uuid())
+  name           String
+  paymentTerms   String?
+  leadTimeDays   Int?
+  phone          String?
+  email          String?
+  address        String?
+  organizationId String
+  isDeleted      Boolean    @default(false)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  costItems      CostItem[]
+  products       Product[]  @relation("DefaultSupplier")
+
+  @@unique([name, organizationId])
+  @@index([organizationId])
+}
+
+model Product {
+  id                String    @id @default(uuid())
+  name              String
+  uom               String?
+  category          String?
+  standardCost      Float     @default(0)
+  lastPrice         Float     @default(0)
+  lastUpdatedDate   DateTime?
+  defaultSupplierId String?
+  organizationId    String
+  isDeleted         Boolean   @default(false)
+  defaultSupplier   Supplier? @relation("DefaultSupplier", fields: [defaultSupplierId], references: [id])
+  organization      Organization @relation(fields: [organizationId], references: [id])
+  costItems         CostItem[]
+
+  @@index([name])
+  @@index([organizationId])
+}
+
+model Project {
+  id                String        @id @default(uuid())
+  name              String
+  status            ProjectStatus @default(ACTIVE)
+  ownerId           String
+  customerId        String?
+  estimatedRevenue  Float?
+  expectedCloseDate DateTime?
+  stageId           String?
+  customerPoNumber  String?
+  organizationId    String
+  isDeleted         Boolean       @default(false)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  owner             User          @relation(fields: [ownerId], references: [id])
+  customer          Customer?     @relation(fields: [customerId], references: [id])
+  stage             Stage?        @relation(fields: [stageId], references: [id])
+  organization      Organization  @relation(fields: [organizationId], references: [id])
+  budgets           Budget[]
+  attachments       Attachment[]
+  stageHistory      ProjectStageHistory[]
+  customFieldValues CustomFieldValue[]
+
+  @@index([organizationId])
+  @@index([stageId])
+  @@index([ownerId])
+}
+
+enum ProjectStatus {
+  ACTIVE
+  CLOSED_WON
+  CLOSED_LOST
+  ON_HOLD
+}
+
+model ProjectStageHistory {
+  id          String   @id @default(uuid())
+  projectId   String
+  fromStageId String?
+  toStageId   String
+  changedBy   String
+  changedAt   DateTime @default(now())
+  project     Project  @relation(fields: [projectId], references: [id])
+  fromStage   Stage?   @relation("FromStage", fields: [fromStageId], references: [id])
+  toStage     Stage    @relation("ToStage", fields: [toStageId], references: [id])
+  changedByUser User   @relation(fields: [changedBy], references: [id])
+
+  @@index([projectId])
+}
+
+model Budget {
+  id            String       @id @default(uuid())
+  projectId     String
+  version       Int
+  status        BudgetStatus @default(DRAFT)
+  vatRate       Float        @default(7)
+  lockedAt      DateTime?
+  createdBy     String
+  createdAt     DateTime     @default(now())
+  project       Project      @relation(fields: [projectId], references: [id])
+  createdByUser User         @relation(fields: [createdBy], references: [id])
+  costItems     CostItem[]
+
+  @@index([projectId])
+}
+
+enum BudgetStatus {
+  DRAFT
+  LOCKED
+}
+
+model CostItem {
+  id                  String           @id @default(uuid())
+  budgetId            String
+  productId           String?
+  productName         String?
+  productUom          String?
+  productStandardCost Float?
+  supplierId          String?
+  supplierName        String?
+  qty                 Float            @default(1)
+  unitPrice           Float            @default(0)
+  vatIncluded         Boolean          @default(true)
+  safetyBufferPercent Float            @default(0)
+  category            CostItemCategory @default(MATERIAL)
+  currency            String           @default("THB")
+  fxRate              Float            @default(1)
+  landedCost          Float            @default(0)
+  status              CostItemStatus   @default(QUOTED)
+  paymentTerms        String?
+  leadTime            Int?
+  lineTotal           Float            @default(0)
+  isDeleted           Boolean          @default(false)
+  budget              Budget           @relation(fields: [budgetId], references: [id])
+  product             Product?         @relation(fields: [productId], references: [id])
+  supplier            Supplier?        @relation(fields: [supplierId], references: [id])
+
+  @@index([budgetId])
+}
+
+enum CostItemStatus {
+  QUOTED
+  ORDERED
+  RECEIVED
+  PAID
+}
+
+enum CostItemCategory {
+  MATERIAL
+  LABOR
+  LOGISTICS
+  MISC
+}
+
+model Attachment {
+  id                 String   @id @default(uuid())
+  projectId          String
+  fileName           String
+  fileType           String
+  fileSize           Int
+  storagePath        String
+  cloudinaryPublicId String
+  uploadedBy         String
+  uploadedAt         DateTime @default(now())
+  organizationId     String
+  project            Project      @relation(fields: [projectId], references: [id])
+  uploadedByUser     User         @relation(fields: [uploadedBy], references: [id])
+  organization       Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([projectId])
+}
+
+model CustomFieldDefinition {
+  id             String          @id @default(uuid())
+  fieldName      String
+  fieldType      CustomFieldType
+  isMandatory    Boolean         @default(false)
+  placeholder    String?
+  defaultValue   String?
+  options        String?
+  scope          FieldScope      @default(ALL_COMPANIES)
+  order          Int             @default(0)
+  organizationId String
+  isDeleted      Boolean         @default(false)
+  organization   Organization    @relation(fields: [organizationId], references: [id])
+  values         CustomFieldValue[]
+
+  @@index([organizationId])
+}
+
+enum CustomFieldType {
+  TEXT
+  LONG_TEXT
+  NUMBER
+  CURRENCY
+  DATE
+  DROPDOWN
+  CHECKBOX
+}
+
+enum FieldScope {
+  ALL_COMPANIES
+}
+
+model CustomFieldValue {
+  id           String                @id @default(uuid())
+  definitionId String
+  projectId    String
+  value        String?
+  definition   CustomFieldDefinition @relation(fields: [definitionId], references: [id])
+  project      Project               @relation(fields: [projectId], references: [id])
+
+  @@unique([definitionId, projectId])
+  @@index([projectId])
+}
+
+model AuditLog {
+  id             String   @id @default(uuid())
+  entityType     String
+  entityId       String
+  action         String
+  fieldChanged   String?
+  oldValue       String?
+  newValue       String?
+  userId         String
+  organizationId String
+  createdAt      DateTime @default(now())
+  user           User         @relation(fields: [userId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([entityId, createdAt(sort: Desc)])
+  @@index([organizationId])
+}

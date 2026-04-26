@@ -1,0 +1,21 @@
+# compiled output
+/dist
+/node_modules
+/coverage
+
+# logs
+npm-debug.log*
+*.log
+
+# env
+.env
+.env.test
+.env.local
+
+# editor
+.DS_Store
+.idea
+.vscode
+
+# tests
+*.lcov
