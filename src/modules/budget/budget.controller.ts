@@ -8,6 +8,7 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import {
@@ -17,11 +18,13 @@ import {
 import { RolesGuard } from '../../common/guards/roles.guard';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { Role } from '../../common/enums/role.enum';
+import { AuditTrailInterceptor } from '../../common/interceptors/audit-trail.interceptor';
 import { BudgetService } from './budget.service';
 
 @ApiTags('budget')
 @ApiCookieAuth('access_token')
 @UseGuards(OrganizationGuard)
+@UseInterceptors(AuditTrailInterceptor)
 @Controller()
 export class BudgetController {
   constructor(private readonly budgetService: BudgetService) {}

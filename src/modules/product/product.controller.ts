@@ -11,12 +11,14 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import {
   OrganizationGuard,
   AuthenticatedRequest,
 } from '../../common/guards/organization.guard';
+import { AuditTrailInterceptor } from '../../common/interceptors/audit-trail.interceptor';
 import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/create-product.dto';
 import { UpdateProductDto } from './dto/update-product.dto';
@@ -57,6 +59,7 @@ export class ProductController {
   }
 
   @Patch(':id')
+  @UseInterceptors(AuditTrailInterceptor)
   @HttpCode(HttpStatus.OK)
   async update(
     @Req() req: AuthenticatedRequest,
@@ -67,6 +70,7 @@ export class ProductController {
   }
 
   @Delete(':id')
+  @UseInterceptors(AuditTrailInterceptor)
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     await this.productService.delete(id, req.activeOrganizationId!);

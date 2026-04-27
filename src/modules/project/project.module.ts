@@ -6,6 +6,7 @@ import { ProfitabilityService } from './profitability.service';
 import { BudgetRepository } from '../budget/budget.repository';
 import { OrganizationSettingsModule } from '../organization-settings/organization-settings.module';
 import { AuthModule } from '../auth/auth.module';
+import { AuditTrailInterceptor } from '../../common/interceptors/audit-trail.interceptor';
 
 @Module({
   imports: [AuthModule, OrganizationSettingsModule],
@@ -15,6 +16,7 @@ import { AuthModule } from '../auth/auth.module';
     ProjectRepository,
     ProfitabilityService,
     BudgetRepository,
+    AuditTrailInterceptor,
   ],
   exports: [ProjectService, ProjectRepository],
 })
