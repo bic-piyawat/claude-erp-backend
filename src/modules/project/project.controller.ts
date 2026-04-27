@@ -11,12 +11,14 @@ import {
   Query,
   Req,
   UseGuards,
+  UseInterceptors,
 } from '@nestjs/common';
 import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
 import {
   OrganizationGuard,
   AuthenticatedRequest,
 } from '../../common/guards/organization.guard';
+import { AuditTrailInterceptor } from '../../common/interceptors/audit-trail.interceptor';
 import { ProjectService } from './project.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
@@ -65,6 +67,7 @@ export class ProjectController {
   }
 
   @Patch(':id')
+  @UseInterceptors(AuditTrailInterceptor)
   @HttpCode(HttpStatus.OK)
   async update(
     @Req() req: AuthenticatedRequest,
@@ -75,6 +78,7 @@ export class ProjectController {
   }
 
   @Delete(':id')
+  @UseInterceptors(AuditTrailInterceptor)
   @HttpCode(HttpStatus.NO_CONTENT)
   async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
     await this.projectService.delete(id, req.activeOrganizationId!);
