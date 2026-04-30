@@ -42,6 +42,7 @@ describe('ProjectController', () => {
       update: jest.fn(),
       delete: jest.fn(),
       transitionStage: jest.fn(),
+      updateStatus: jest.fn(),
       getProfitability: jest.fn(),
       syncMaster: jest.fn(),
       syncMasterApply: jest.fn(),
@@ -140,6 +141,53 @@ describe('ProjectController', () => {
       );
 
       expect(interceptors).toContain(AuditTrailInterceptor);
+    });
+
+    it('should declare AuditTrailInterceptor on updateStatus handler (PRJ-043)', () => {
+      const interceptors = Reflect.getMetadata(
+        INTERCEPTORS_METADATA,
+        ProjectController.prototype.updateStatus,
+      );
+
+      expect(interceptors).toContain(AuditTrailInterceptor);
+    });
+  });
+
+  describe('updateStatus (PRJ-043)', () => {
+    it('should return service response with project, suggestedStage and budgetLocked', async () => {
+      const expected = {
+        project: mockProject({ status: 'PROPOSED' }),
+        suggestedStage: { id: 'stage-1', name: 'Proposal' },
+        budgetLocked: false,
+      };
+      service.updateStatus.mockResolvedValue(expected as never);
+
+      const result = await controller.updateStatus(
+        mockRequest() as never,
+        'proj-1',
+        { status: 'PROPOSED' } as never,
+      );
+
+      expect(service.updateStatus).toHaveBeenCalledWith(
+        'proj-1',
+        'org-1',
+        'u-1',
+        'PROPOSED',
+      );
+      expect(result).toEqual(expected);
+    });
+
+    it('should propagate NotFoundException from the service', async () => {
+      const { NotFoundException } = await import('@nestjs/common');
+      service.updateStatus.mockRejectedValue(
+        new NotFoundException('Project not found'),
+      );
+
+      await expect(
+        controller.updateStatus(mockRequest() as never, 'missing', {
+          status: 'WON',
+        } as never),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 });

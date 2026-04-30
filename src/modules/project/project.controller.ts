@@ -25,6 +25,7 @@ import { UpdateProjectDto } from './dto/update-project.dto';
 import { QueryProjectDto } from './dto/query-project.dto';
 import { StageTransitionDto } from './dto/stage-transition.dto';
 import { SyncMasterApplyDto } from './dto/sync-master-apply.dto';
+import { UpdateProjectStatusDto } from './dto/update-project-status.dto';
 
 @ApiTags('projects')
 @ApiCookieAuth('access_token')
@@ -97,6 +98,22 @@ export class ProjectController {
       req.user!.userId,
       req.user?.role,
       dto,
+    );
+  }
+
+  @Patch(':id/status')
+  @UseInterceptors(AuditTrailInterceptor)
+  @HttpCode(HttpStatus.OK)
+  async updateStatus(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() dto: UpdateProjectStatusDto,
+  ) {
+    return this.projectService.updateStatus(
+      id,
+      req.activeOrganizationId!,
+      req.user!.userId,
+      dto.status,
     );
   }
 

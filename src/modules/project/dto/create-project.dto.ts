@@ -1,11 +1,12 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { Type } from 'class-transformer';
+import { Transform, Type } from 'class-transformer';
 import {
   IsArray,
   IsDateString,
   IsNumber,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
   ValidateNested,
@@ -23,9 +24,13 @@ class CustomFieldValueDto {
 }
 
 export class CreateProjectDto {
-  @ApiPropertyOptional({ example: 'Alpha ERP' })
+  @ApiProperty({ example: 'Alpha ERP', minLength: 1, maxLength: 200 })
   @IsString()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : (value as unknown),
+  )
   @MinLength(1)
+  @MaxLength(200)
   name!: string;
 
   @ApiPropertyOptional({ example: 'user-uuid' })
