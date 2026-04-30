@@ -31,7 +31,6 @@ function mockCostItem(overrides = {}) {
     qty: 2,
     unitPrice: 100,
     vatIncluded: true,
-    safetyBufferPercent: 5,
     category: 'MATERIAL',
     currency: 'THB',
     fxRate: 1,
@@ -39,7 +38,7 @@ function mockCostItem(overrides = {}) {
     status: 'QUOTED',
     paymentTerms: 'Net 30',
     leadTime: 7,
-    lineTotal: 210,
+    lineTotal: 200,
     isDeleted: false,
     ...overrides,
   };
@@ -81,22 +80,10 @@ describe('CostItemService', () => {
   });
 
   describe('computeLineTotal', () => {
-    it('should compute lineTotal as qty × unitPrice × (1 + safetyBufferPercent/100)', () => {
-      const result = service.computeLineTotal(2, 100, 5);
+    it('should compute lineTotal as qty × unitPrice', () => {
+      const result = service.computeLineTotal(2, 100);
 
-      expect(result).toBe(210);
-    });
-
-    it('should compute lineTotal with zero safetyBuffer', () => {
-      const result = service.computeLineTotal(3, 100, 0);
-
-      expect(result).toBe(300);
-    });
-
-    it('should compute lineTotal with 10% safetyBuffer', () => {
-      const result = service.computeLineTotal(2, 50, 10);
-
-      expect(result).toBeCloseTo(110, 5);
+      expect(result).toBe(200);
     });
   });
 
@@ -120,7 +107,6 @@ describe('CostItemService', () => {
           supplierId: 'sup-1',
           qty: 2,
           unitPrice: 100,
-          safetyBufferPercent: 5,
         },
         'org-1',
       );
@@ -128,12 +114,12 @@ describe('CostItemService', () => {
       expect(costItemRepository.create).toHaveBeenCalledWith(
         'budget-1',
         expect.objectContaining({
-          lineTotal: 210,
+          lineTotal: 200,
           productName: 'Widget Pro',
           supplierName: 'Supplier A',
         }),
       );
-      expect(result.lineTotal).toBe(210);
+      expect(result.lineTotal).toBe(200);
     });
 
     it('should throw ForbiddenException when budget is LOCKED', async () => {
@@ -187,14 +173,14 @@ describe('CostItemService', () => {
       budgetRepository.findById.mockResolvedValue(mockBudget() as any);
       costItemRepository.findById.mockResolvedValue(mockCostItem() as any);
       costItemRepository.update.mockResolvedValue(
-        mockCostItem({ qty: 3, unitPrice: 100, lineTotal: 315 }) as any,
+        mockCostItem({ qty: 3, unitPrice: 100, lineTotal: 300 }) as any,
       );
 
       await service.update('budget-1', 'item-1', { qty: 3 });
 
       expect(costItemRepository.update).toHaveBeenCalledWith(
         'item-1',
-        expect.objectContaining({ lineTotal: 315 }),
+        expect.objectContaining({ lineTotal: 300 }),
       );
     });
 

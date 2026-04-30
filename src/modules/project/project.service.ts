@@ -249,8 +249,7 @@ export class ProjectService {
       });
       if (!product) continue;
 
-      const newLineTotal =
-        item.qty * product.lastPrice * (1 + item.safetyBufferPercent / 100);
+      const newLineTotal = item.qty * product.lastPrice;
       await this.prisma.costItem.update({
         where: { id: itemId },
         data: { unitPrice: product.lastPrice, lineTotal: newLineTotal },

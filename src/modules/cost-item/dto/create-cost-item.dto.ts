@@ -34,12 +34,6 @@ export class CreateCostItemDto {
   @IsBoolean()
   vatIncluded?: boolean;
 
-  @ApiPropertyOptional({ example: 5 })
-  @IsOptional()
-  @IsNumber()
-  @Min(0)
-  safetyBufferPercent?: number;
-
   @ApiPropertyOptional({ example: 'MATERIAL' })
   @IsOptional()
   @IsString()

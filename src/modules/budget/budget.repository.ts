@@ -25,7 +25,6 @@ export interface CostItemEntity {
   qty: number;
   unitPrice: number;
   vatIncluded: boolean;
-  safetyBufferPercent: number;
   category: string;
   currency: string;
   fxRate: number;
@@ -103,7 +102,6 @@ export class BudgetRepository {
             qty: item.qty,
             unitPrice: item.unitPrice,
             vatIncluded: item.vatIncluded,
-            safetyBufferPercent: item.safetyBufferPercent,
             category: item.category as any,
             currency: item.currency,
             fxRate: item.fxRate,
