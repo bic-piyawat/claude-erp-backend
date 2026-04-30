@@ -22,7 +22,6 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { StageTransitionDto } from './dto/stage-transition.dto';
 import { PaginatedResult } from '../customer/customer.repository';
-import { Role } from '../../common/enums/role.enum';
 
 const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
@@ -150,17 +149,6 @@ export class ProjectService {
     const project = await this.projectRepository.findById(id, organizationId);
     if (!project) throw new NotFoundException('Project not found');
 
-    if (project.status === 'CLOSED_WON') {
-      throw new HttpException(
-        {
-          statusCode: 422,
-          code: BUSINESS_RULE_VIOLATION,
-          message: 'Cannot delete a CLOSED_WON project',
-        },
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
-    }
-
     await this.projectRepository.softDelete(id);
   }
 
@@ -168,7 +156,7 @@ export class ProjectService {
     id: string,
     organizationId: string,
     userId: string,
-    userRole: string | undefined,
+    _userRole: string | undefined,
     dto: StageTransitionDto,
   ): Promise<ProjectDetail> {
     const project = await this.projectRepository.findById(id, organizationId);
@@ -179,96 +167,6 @@ export class ProjectService {
     });
     if (!targetStage) throw new NotFoundException('Target stage not found');
 
-    const isClosedWon =
-      targetStage.name === 'CLOSED_WON' ||
-      (await this.isClosingStage(dto.stageId, organizationId));
-
-    if (project.status === 'CLOSED_WON') {
-      if (userRole !== Role.SUPER_ADMIN && userRole !== Role.FOUNDER) {
-        throw new ForbiddenException(
-          'Only SUPER_ADMIN or FOUNDER can move project out of CLOSED_WON',
-        );
-      }
-      await this.projectRepository.recordStageHistory(
-        id,
-        project.stageId,
-        dto.stageId,
-        userId,
-      );
-      return this.projectRepository.update(id, {
-        stageId: dto.stageId,
-        status: 'ACTIVE',
-      });
-    }
-
-    if (isClosedWon) {
-      if (!dto.customerPoNumber || dto.customerPoNumber.trim() === '') {
-        throw new HttpException(
-          {
-            statusCode: 422,
-            code: BUSINESS_RULE_VIOLATION,
-            message: 'customerPoNumber is required to close',
-          },
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      const attachmentCount = await this.prisma.attachment.count({
-        where: { projectId: id },
-      });
-      if (attachmentCount < 1) {
-        throw new HttpException(
-          {
-            statusCode: 422,
-            code: BUSINESS_RULE_VIOLATION,
-            message: 'At least one attachment is required to close',
-          },
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
-      }
-
-      const currentBudget =
-        await this.budgetRepository.findCurrentByProject(id);
-      if (currentBudget) {
-        await this.budgetRepository.lockBudget(currentBudget.id);
-
-        const nextVersion = currentBudget.version + 1;
-        await this.budgetRepository.createVersion(
-          id,
-          nextVersion,
-          currentBudget.vatRate,
-          userId,
-          currentBudget.costItems,
-        );
-
-        await this.prisma.$transaction(
-          currentBudget.costItems
-            .filter((item) => item.productId && item.unitPrice)
-            .map((item) =>
-              this.prisma.product.update({
-                where: { id: item.productId! },
-                data: {
-                  lastPrice: item.unitPrice,
-                  lastUpdatedDate: new Date(),
-                },
-              }),
-            ),
-        );
-      }
-
-      await this.projectRepository.recordStageHistory(
-        id,
-        project.stageId,
-        dto.stageId,
-        userId,
-      );
-      return this.projectRepository.update(id, {
-        stageId: dto.stageId,
-        status: 'CLOSED_WON',
-        customerPoNumber: dto.customerPoNumber,
-      });
-    }
-
     await this.projectRepository.recordStageHistory(
       id,
       project.stageId,
@@ -276,16 +174,6 @@ export class ProjectService {
       userId,
     );
     return this.projectRepository.update(id, { stageId: dto.stageId });
-  }
-
-  private async isClosingStage(
-    stageId: string,
-    organizationId: string,
-  ): Promise<boolean> {
-    const stage = await this.prisma.stage.findFirst({
-      where: { id: stageId, organizationId },
-    });
-    return stage?.name?.toLowerCase().includes('closed won') || false;
   }
 
   async getProfitability(
@@ -314,10 +202,6 @@ export class ProjectService {
   async syncMaster(id: string, organizationId: string) {
     const project = await this.projectRepository.findById(id, organizationId);
     if (!project) throw new NotFoundException('Project not found');
-
-    if (project.status === 'CLOSED_WON') {
-      throw new ForbiddenException('Cannot sync master for CLOSED_WON project');
-    }
 
     const currentBudget = await this.budgetRepository.findCurrentByProject(id);
     if (!currentBudget) return { diffs: [] };

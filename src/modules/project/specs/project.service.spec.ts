@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import {
   BadRequestException,
-  ForbiddenException,
   HttpException,
   NotFoundException,
 } from '@nestjs/common';
@@ -202,69 +201,81 @@ describe('ProjectService', () => {
       expect(projectRepository.softDelete).toHaveBeenCalledWith('proj-1');
     });
 
-    it('should throw 422 when trying to delete CLOSED_WON project', async () => {
+    it('should soft delete a CLOSED_WON project unconditionally', async () => {
       projectRepository.findById.mockResolvedValue(
         mockProject({ status: 'CLOSED_WON' }),
       );
 
-      await expect(service.delete('proj-1', 'org-1')).rejects.toThrow(
-        HttpException,
-      );
+      await service.delete('proj-1', 'org-1');
+
+      expect(projectRepository.softDelete).toHaveBeenCalledWith('proj-1');
     });
   });
 
   describe('transitionStage', () => {
-    it('should throw 403 when MEMBER tries to move project out of CLOSED_WON', async () => {
+    it('should record history and update stageId for an ACTIVE project', async () => {
       projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'CLOSED_WON' }),
+        mockProject({ status: 'ACTIVE', stageId: 'stage-1' }),
+      );
+      (prisma.stage.findFirst as jest.Mock).mockResolvedValue({
+        id: 'stage-2',
+        name: 'Proposal',
+      });
+      projectRepository.update.mockResolvedValue(
+        mockProject({ stageId: 'stage-2' }),
+      );
+
+      await service.transitionStage('proj-1', 'org-1', 'u-1', 'MEMBER', {
+        stageId: 'stage-2',
+      });
+
+      expect(projectRepository.recordStageHistory).toHaveBeenCalledWith(
+        'proj-1',
+        'stage-1',
+        'stage-2',
+        'u-1',
+      );
+      expect(projectRepository.update).toHaveBeenCalledWith('proj-1', {
+        stageId: 'stage-2',
+      });
+    });
+
+    it('should record history and update stageId for a CLOSED_WON project regardless of status', async () => {
+      projectRepository.findById.mockResolvedValue(
+        mockProject({ status: 'CLOSED_WON', stageId: 'stage-cw' }),
       );
       (prisma.stage.findFirst as jest.Mock).mockResolvedValue({
         id: 'stage-2',
         name: 'Lead',
       });
+      projectRepository.update.mockResolvedValue(
+        mockProject({ stageId: 'stage-2' }),
+      );
+
+      await service.transitionStage('proj-1', 'org-1', 'u-1', 'MEMBER', {
+        stageId: 'stage-2',
+      });
+
+      expect(projectRepository.recordStageHistory).toHaveBeenCalledWith(
+        'proj-1',
+        'stage-cw',
+        'stage-2',
+        'u-1',
+      );
+      expect(projectRepository.update).toHaveBeenCalledWith('proj-1', {
+        stageId: 'stage-2',
+      });
+    });
+
+    it('should throw NotFoundException when target stage does not exist', async () => {
+      projectRepository.findById.mockResolvedValue(mockProject());
+      (prisma.stage.findFirst as jest.Mock).mockResolvedValue(null);
 
       await expect(
         service.transitionStage('proj-1', 'org-1', 'u-1', 'MEMBER', {
-          stageId: 'stage-2',
+          stageId: 'missing-stage',
         }),
-      ).rejects.toThrow(ForbiddenException);
-    });
-
-    it('should throw 422 when transitioning to CLOSED_WON without customerPoNumber', async () => {
-      projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'ACTIVE' }),
-      );
-      (prisma.stage.findFirst as jest.Mock).mockResolvedValue({
-        id: 'stage-cw',
-        name: 'Closed Won',
-      });
-      (prisma.attachment.count as jest.Mock).mockResolvedValue(1);
-      budgetRepository.findCurrentByProject.mockResolvedValue(null);
-
-      await expect(
-        service.transitionStage('proj-1', 'org-1', 'u-1', 'FOUNDER', {
-          stageId: 'stage-cw',
-        }),
-      ).rejects.toThrow(HttpException);
-    });
-
-    it('should throw 422 when transitioning to CLOSED_WON without attachments', async () => {
-      projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'ACTIVE' }),
-      );
-      (prisma.stage.findFirst as jest.Mock).mockResolvedValue({
-        id: 'stage-cw',
-        name: 'Closed Won',
-      });
-      (prisma.attachment.count as jest.Mock).mockResolvedValue(0);
-      budgetRepository.findCurrentByProject.mockResolvedValue(null);
-
-      await expect(
-        service.transitionStage('proj-1', 'org-1', 'u-1', 'FOUNDER', {
-          stageId: 'stage-cw',
-          customerPoNumber: 'PO-001',
-        }),
-      ).rejects.toThrow(HttpException);
+      ).rejects.toThrow(NotFoundException);
     });
   });
 
@@ -283,18 +294,19 @@ describe('ProjectService', () => {
   });
 
   describe('syncMaster', () => {
-    it('should throw ForbiddenException for CLOSED_WON project', async () => {
+    it('should return empty diffs when no budget', async () => {
+      projectRepository.findById.mockResolvedValue(mockProject());
+      budgetRepository.findCurrentByProject.mockResolvedValue(null);
+
+      const result = await service.syncMaster('proj-1', 'org-1');
+
+      expect(result.diffs).toHaveLength(0);
+    });
+
+    it('should return empty diffs for a CLOSED_WON project regardless of status', async () => {
       projectRepository.findById.mockResolvedValue(
         mockProject({ status: 'CLOSED_WON' }),
       );
-
-      await expect(service.syncMaster('proj-1', 'org-1')).rejects.toThrow(
-        ForbiddenException,
-      );
-    });
-
-    it('should return empty diffs when no budget', async () => {
-      projectRepository.findById.mockResolvedValue(mockProject());
       budgetRepository.findCurrentByProject.mockResolvedValue(null);
 
       const result = await service.syncMaster('proj-1', 'org-1');
