@@ -15,6 +15,7 @@ import { ProjectModule } from './modules/project/project.module';
 import { AttachmentModule } from './modules/attachment/attachment.module';
 import { CustomFieldModule } from './modules/custom-field/custom-field.module';
 import { EstimateItemModule } from './modules/estimate-item/estimate-item.module';
+import { ContactPersonModule } from './modules/contact-person/contact-person.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { EstimateItemModule } from './modules/estimate-item/estimate-item.module
     AttachmentModule,
     CustomFieldModule,
     EstimateItemModule,
+    ContactPersonModule,
   ],
   controllers: [AppController],
   providers: [AppService],
