@@ -17,13 +17,14 @@ function mockProject(overrides: Record<string, unknown> = {}) {
   return {
     id: 'proj-1',
     name: 'Acme Pipeline',
-    status: 'ACTIVE',
+    status: 'DRAFT',
     ownerId: 'u-1',
     customerId: null,
-    estimatedRevenue: null,
+    totalProjectPrice: null,
     expectedCloseDate: null,
     stageId: null,
     customerPoNumber: null,
+    customerPoIssuedDate: null,
     organizationId: 'org-1',
     ...overrides,
   };

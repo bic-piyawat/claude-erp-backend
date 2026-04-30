@@ -81,7 +81,7 @@ export class ProjectService {
       name: dto.name,
       ownerId: effectiveOwnerId,
       customerId: dto.customerId,
-      estimatedRevenue: dto.estimatedRevenue,
+      totalProjectPrice: dto.totalProjectPrice,
       expectedCloseDate: dto.expectedCloseDate,
       organizationId,
     });
@@ -193,7 +193,7 @@ export class ProjectService {
     }));
 
     return this.profitabilityService.compute(
-      project.estimatedRevenue ?? 0,
+      project.totalProjectPrice ?? 0,
       settings.vatRate,
       costItems,
     );

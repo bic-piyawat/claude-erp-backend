@@ -42,7 +42,7 @@ export class CreateProjectDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  estimatedRevenue?: number;
+  totalProjectPrice?: number;
 
   @ApiPropertyOptional({ example: '2026-06-30' })
   @IsOptional()

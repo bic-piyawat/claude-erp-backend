@@ -138,27 +138,28 @@ model Product {
 }
 
 model Project {
-  id                String        @id @default(uuid())
-  name              String
-  status            ProjectStatus @default(ACTIVE)
-  ownerId           String
-  customerId        String?
-  estimatedRevenue  Float?
-  expectedCloseDate DateTime?
-  stageId           String?
-  customerPoNumber  String?
-  organizationId    String
-  isDeleted         Boolean       @default(false)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
-  owner             User          @relation(fields: [ownerId], references: [id])
-  customer          Customer?     @relation(fields: [customerId], references: [id])
-  stage             Stage?        @relation(fields: [stageId], references: [id])
-  organization      Organization  @relation(fields: [organizationId], references: [id])
-  budgets           Budget[]
-  attachments       Attachment[]
-  stageHistory      ProjectStageHistory[]
-  customFieldValues CustomFieldValue[]
+  id                   String        @id @default(uuid())
+  name                 String
+  status               ProjectStatus @default(DRAFT)
+  ownerId              String
+  customerId           String?
+  totalProjectPrice    Float?
+  expectedCloseDate    DateTime?
+  stageId              String?
+  customerPoNumber     String?
+  customerPoIssuedDate DateTime?
+  organizationId       String
+  isDeleted            Boolean       @default(false)
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+  owner                User          @relation(fields: [ownerId], references: [id])
+  customer             Customer?     @relation(fields: [customerId], references: [id])
+  stage                Stage?        @relation(fields: [stageId], references: [id])
+  organization         Organization  @relation(fields: [organizationId], references: [id])
+  budgets              Budget[]
+  attachments          Attachment[]
+  stageHistory         ProjectStageHistory[]
+  customFieldValues    CustomFieldValue[]
 
   @@index([organizationId])
   @@index([stageId])
@@ -166,9 +167,13 @@ model Project {
 }
 
 enum ProjectStatus {
-  ACTIVE
-  CLOSED_WON
-  CLOSED_LOST
+  DRAFT
+  PROPOSED
+  QUOTATION_SENT
+  UNDER_NEGOTIATION
+  AWAITING_PO
+  WON
+  LOST
   ON_HOLD
 }
 

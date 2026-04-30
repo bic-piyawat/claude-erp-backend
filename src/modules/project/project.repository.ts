@@ -13,7 +13,7 @@ export interface ProjectListItem {
   customerName: string | null;
   stageId: string | null;
   stageName: string | null;
-  estimatedRevenue: number | null;
+  totalProjectPrice: number | null;
   expectedCloseDate: Date | null;
   organizationId: string;
   createdAt: Date;
@@ -26,9 +26,10 @@ export interface ProjectDetail {
   ownerId: string;
   customerId: string | null;
   stageId: string | null;
-  estimatedRevenue: number | null;
+  totalProjectPrice: number | null;
   expectedCloseDate: Date | null;
   customerPoNumber: string | null;
+  customerPoIssuedDate: Date | null;
   organizationId: string;
   createdAt: Date;
   updatedAt: Date;
@@ -82,7 +83,7 @@ export class ProjectRepository {
       customerName: p.customer?.name ?? null,
       stageId: p.stageId,
       stageName: p.stage?.name ?? null,
-      estimatedRevenue: p.estimatedRevenue,
+      totalProjectPrice: p.totalProjectPrice,
       expectedCloseDate: p.expectedCloseDate,
       organizationId: p.organizationId,
       createdAt: p.createdAt,
@@ -116,7 +117,7 @@ export class ProjectRepository {
     name: string;
     ownerId: string;
     customerId?: string;
-    estimatedRevenue?: number;
+    totalProjectPrice?: number;
     expectedCloseDate?: string;
     organizationId: string;
   }): Promise<{ id: string }> {
@@ -125,7 +126,7 @@ export class ProjectRepository {
         name: data.name,
         ownerId: data.ownerId,
         customerId: data.customerId,
-        estimatedRevenue: data.estimatedRevenue,
+        totalProjectPrice: data.totalProjectPrice,
         expectedCloseDate: data.expectedCloseDate
           ? new Date(data.expectedCloseDate)
           : undefined,
@@ -141,7 +142,7 @@ export class ProjectRepository {
       name?: string;
       ownerId?: string;
       customerId?: string;
-      estimatedRevenue?: number;
+      totalProjectPrice?: number;
       expectedCloseDate?: string;
       customerPoNumber?: string;
       stageId?: string;
