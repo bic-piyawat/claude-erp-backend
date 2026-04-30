@@ -21,6 +21,7 @@ model Organization {
   customFieldDefinitions CustomFieldDefinition[]
   auditLogs              AuditLog[]
   settings               OrganizationSettings?
+  estimateItems          EstimateItem[]
 
   @@map("organizations")
 }
@@ -112,6 +113,7 @@ model Supplier {
   isDeleted      Boolean    @default(false)
   organization   Organization @relation(fields: [organizationId], references: [id])
   costItems      CostItem[]
+  estimateItems  EstimateItem[]
   products       Product[]  @relation("DefaultSupplier")
 
   @@unique([name, organizationId])
@@ -132,6 +134,7 @@ model Product {
   defaultSupplier   Supplier? @relation("DefaultSupplier", fields: [defaultSupplierId], references: [id])
   organization      Organization @relation(fields: [organizationId], references: [id])
   costItems         CostItem[]
+  estimateItems     EstimateItem[]
 
   @@index([name])
   @@index([organizationId])
@@ -160,6 +163,7 @@ model Project {
   attachments          Attachment[]
   stageHistory         ProjectStageHistory[]
   customFieldValues    CustomFieldValue[]
+  estimateItems        EstimateItem[]
 
   @@index([organizationId])
   @@index([stageId])
@@ -225,7 +229,6 @@ model CostItem {
   qty                 Float            @default(1)
   unitPrice           Float            @default(0)
   vatIncluded         Boolean          @default(true)
-  safetyBufferPercent Float            @default(0)
   category            CostItemCategory @default(MATERIAL)
   currency            String           @default("THB")
   fxRate              Float            @default(1)
@@ -254,6 +257,33 @@ enum CostItemCategory {
   LABOR
   LOGISTICS
   MISC
+}
+
+model EstimateItem {
+  id             String           @id @default(uuid())
+  projectId      String
+  productId      String?
+  productName    String?
+  productUom     String?
+  supplierId     String?
+  supplierName   String?
+  qty            Float            @default(1)
+  unitPrice      Float            @default(0)
+  vatIncluded    Boolean          @default(true)
+  bufferAmount   Decimal          @default(0) @db.Decimal(12, 2)
+  category       CostItemCategory @default(MATERIAL)
+  currency       String           @default("THB")
+  fxRate         Float            @default(1)
+  organizationId String
+  isDeleted      Boolean          @default(false)
+  createdAt      DateTime         @default(now())
+  project        Project          @relation(fields: [projectId], references: [id])
+  product        Product?         @relation(fields: [productId], references: [id])
+  supplier       Supplier?        @relation(fields: [supplierId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id])
+
+  @@index([projectId])
+  @@index([organizationId])
 }
 
 model Attachment {

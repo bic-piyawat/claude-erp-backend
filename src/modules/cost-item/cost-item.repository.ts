@@ -12,7 +12,6 @@ export interface CreateCostItemData {
   qty: number;
   unitPrice: number;
   vatIncluded?: boolean;
-  safetyBufferPercent?: number;
   category?: string;
   currency?: string;
   fxRate?: number;
@@ -40,7 +39,6 @@ export class CostItemRepository {
         qty: data.qty,
         unitPrice: data.unitPrice,
         vatIncluded: data.vatIncluded ?? true,
-        safetyBufferPercent: data.safetyBufferPercent ?? 0,
         category: (data.category ?? 'MATERIAL') as CostItemCategory,
         currency: data.currency ?? 'THB',
         fxRate: data.fxRate ?? 1,

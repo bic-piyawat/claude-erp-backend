@@ -17,12 +17,8 @@ export class CostItemService {
     private readonly prisma: PrismaService,
   ) {}
 
-  computeLineTotal(
-    qty: number,
-    unitPrice: number,
-    safetyBufferPercent: number,
-  ): number {
-    return qty * unitPrice * (1 + safetyBufferPercent / 100);
+  computeLineTotal(qty: number, unitPrice: number): number {
+    return qty * unitPrice;
   }
 
   async create(
@@ -64,11 +60,7 @@ export class CostItemService {
       supplierName = supplier.name;
     }
 
-    const lineTotal = this.computeLineTotal(
-      dto.qty,
-      dto.unitPrice,
-      dto.safetyBufferPercent ?? 0,
-    );
+    const lineTotal = this.computeLineTotal(dto.qty, dto.unitPrice);
 
     return this.costItemRepository.create(budgetId, {
       ...dto,
@@ -92,13 +84,7 @@ export class CostItemService {
 
     const qty = dto.qty ?? item.qty;
     const unitPrice = dto.unitPrice ?? item.unitPrice;
-    const safetyBufferPercent =
-      dto.safetyBufferPercent ?? item.safetyBufferPercent;
-    const lineTotal = this.computeLineTotal(
-      qty,
-      unitPrice,
-      safetyBufferPercent,
-    );
+    const lineTotal = this.computeLineTotal(qty, unitPrice);
 
     return this.costItemRepository.update(itemId, { ...dto, lineTotal });
   }
