@@ -55,12 +55,19 @@ export class AuditTrailInterceptor implements NestInterceptor {
   }
 
   private resolveEntityType(path: string): string {
+    // Most-specific-first ordering: nested/leaf paths (e.g. /projects/:id/cost-items)
+    // must be matched BEFORE their parent prefix (/projects) so the resolver
+    // correctly identifies the actual entity being mutated.
+    if (path.includes('/cost-items')) return 'CostItem';
+    if (path.includes('/estimate-items')) return 'EstimateItem';
+    if (path.includes('/contacts')) return 'ContactPerson';
+    if (path.includes('/attachments')) return 'Attachment';
     if (path.includes('/budget')) return 'Budget';
     if (path.includes('/customers')) return 'Customer';
     if (path.includes('/suppliers')) return 'Supplier';
     if (path.includes('/products')) return 'Product';
-    if (path.includes('/projects')) return 'Project';
     if (path.includes('/stages')) return 'Stage';
+    if (path.includes('/projects')) return 'Project';
     return 'Unknown';
   }
 }

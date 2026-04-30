@@ -14,6 +14,7 @@ import { CostItemModule } from './modules/cost-item/cost-item.module';
 import { ProjectModule } from './modules/project/project.module';
 import { AttachmentModule } from './modules/attachment/attachment.module';
 import { CustomFieldModule } from './modules/custom-field/custom-field.module';
+import { EstimateItemModule } from './modules/estimate-item/estimate-item.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { CustomFieldModule } from './modules/custom-field/custom-field.module';
     ProjectModule,
     AttachmentModule,
     CustomFieldModule,
+    EstimateItemModule,
   ],
   controllers: [AppController],
   providers: [AppService],
