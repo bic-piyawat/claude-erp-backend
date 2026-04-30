@@ -14,6 +14,7 @@ model Organization {
   memberships            Membership[]
   stages                 Stage[]
   customers              Customer[]
+  contactPersons         ContactPerson[]
   suppliers              Supplier[]
   products               Product[]
   projects               Project[]
@@ -88,6 +89,7 @@ model Stage {
 model Customer {
   id             String    @id @default(uuid())
   name           String
+  type           CustomerType @default(COMPANY)
   taxId          String?
   phone          String?
   email          String?
@@ -96,14 +98,40 @@ model Customer {
   isDeleted      Boolean   @default(false)
   organization   Organization @relation(fields: [organizationId], references: [id])
   projects       Project[]
+  contactPersons ContactPerson[]
 
   @@unique([name, organizationId])
   @@index([organizationId])
 }
 
+model ContactPerson {
+  id              String       @id @default(uuid())
+  customerId      String
+  name            String
+  position        String?
+  phone           String?
+  email           String?
+  isPrimary       Boolean      @default(false)
+  organizationId  String
+  isDeleted       Boolean      @default(false)
+  createdAt       DateTime     @default(now())
+  customer        Customer     @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  organization    Organization @relation(fields: [organizationId], references: [id])
+
+  @@index([customerId])
+  @@index([organizationId])
+}
+
+enum CustomerType {
+  INDIVIDUAL
+  COMPANY
+  GOVERNMENT
+}
+
 model Supplier {
   id             String     @id @default(uuid())
   name           String
+  type           SupplierType @default(COMPANY)
   paymentTerms   String?
   leadTimeDays   Int?
   phone          String?
@@ -118,6 +146,11 @@ model Supplier {
 
   @@unique([name, organizationId])
   @@index([organizationId])
+}
+
+enum SupplierType {
+  COMPANY
+  INDIVIDUAL
 }
 
 model Product {
@@ -296,12 +329,20 @@ model Attachment {
   cloudinaryPublicId String
   uploadedBy         String
   uploadedAt         DateTime @default(now())
+  category           AttachmentCategory @default(OTHER)
   organizationId     String
   project            Project      @relation(fields: [projectId], references: [id])
   uploadedByUser     User         @relation(fields: [uploadedBy], references: [id])
   organization       Organization @relation(fields: [organizationId], references: [id])
 
   @@index([projectId])
+}
+
+enum AttachmentCategory {
+  CUSTOMER_PO
+  QUOTATION
+  DRAWING
+  OTHER
 }
 
 model CustomFieldDefinition {
