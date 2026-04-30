@@ -1,4 +1,5 @@
 import { Injectable } from '@nestjs/common';
+import { AttachmentCategory } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 
 export interface AttachmentEntity {
@@ -11,6 +12,7 @@ export interface AttachmentEntity {
   cloudinaryPublicId: string;
   uploadedBy: string;
   uploadedAt: Date;
+  category: AttachmentCategory;
   organizationId: string;
 }
 
@@ -18,9 +20,12 @@ export interface AttachmentEntity {
 export class AttachmentRepository {
   constructor(private readonly prisma: PrismaService) {}
 
-  async findAllByProject(projectId: string): Promise<AttachmentEntity[]> {
+  async findAllByProject(
+    projectId: string,
+    category?: AttachmentCategory,
+  ): Promise<AttachmentEntity[]> {
     return this.prisma.attachment.findMany({
-      where: { projectId },
+      where: { projectId, ...(category ? { category } : {}) },
       orderBy: { uploadedAt: 'desc' },
     }) as Promise<AttachmentEntity[]>;
   }
@@ -32,9 +37,13 @@ export class AttachmentRepository {
   }
 
   async create(
-    data: Omit<AttachmentEntity, 'id' | 'uploadedAt'>,
+    data: Omit<AttachmentEntity, 'id' | 'uploadedAt' | 'category'> & {
+      category?: AttachmentCategory;
+    },
   ): Promise<AttachmentEntity> {
-    return this.prisma.attachment.create({ data }) as Promise<AttachmentEntity>;
+    return this.prisma.attachment.create({
+      data: { ...data, category: data.category ?? 'OTHER' },
+    }) as Promise<AttachmentEntity>;
   }
 
   async delete(id: string): Promise<void> {

@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { AttachmentCategory } from '@prisma/client';
 import {
   AttachmentRepository,
   AttachmentEntity,
@@ -32,8 +33,11 @@ export class AttachmentService {
     configureCloudinary();
   }
 
-  async findAllByProject(projectId: string): Promise<AttachmentEntity[]> {
-    return this.attachmentRepository.findAllByProject(projectId);
+  async findAllByProject(
+    projectId: string,
+    category?: AttachmentCategory,
+  ): Promise<AttachmentEntity[]> {
+    return this.attachmentRepository.findAllByProject(projectId, category);
   }
 
   async upload(
@@ -41,6 +45,7 @@ export class AttachmentService {
     organizationId: string,
     userId: string,
     file: UploadFileData,
+    category?: AttachmentCategory,
   ): Promise<AttachmentEntity> {
     if (!ALLOWED_MIMETYPES.has(file.mimetype)) {
       throw new BadRequestException('File type not allowed');
@@ -65,6 +70,7 @@ export class AttachmentService {
       cloudinaryPublicId: result.public_id,
       uploadedBy: userId,
       organizationId,
+      category: category ?? 'OTHER',
     });
   }
 
