@@ -1,9 +1,11 @@
 import { Injectable } from '@nestjs/common';
+import { CustomerType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 
 export interface CustomerEntity {
   id: string;
   name: string;
+  type: CustomerType;
   taxId: string | null;
   phone: string | null;
   email: string | null;
@@ -18,6 +20,17 @@ export interface PaginatedResult<T> {
   currentPage: number;
   itemsPerPage: number;
 }
+
+const SELECT = {
+  id: true,
+  name: true,
+  type: true,
+  taxId: true,
+  phone: true,
+  email: true,
+  address: true,
+  organizationId: true,
+} as const;
 
 @Injectable()
 export class CustomerRepository {
@@ -40,15 +53,7 @@ export class CustomerRepository {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        select: {
-          id: true,
-          name: true,
-          taxId: true,
-          phone: true,
-          email: true,
-          address: true,
-          organizationId: true,
-        },
+        select: SELECT,
         orderBy: { name: 'asc' },
       }),
       this.prisma.customer.count({ where }),
@@ -69,15 +74,7 @@ export class CustomerRepository {
   ): Promise<CustomerEntity | null> {
     return this.prisma.customer.findFirst({
       where: { id, organizationId, isDeleted: false },
-      select: {
-        id: true,
-        name: true,
-        taxId: true,
-        phone: true,
-        email: true,
-        address: true,
-        organizationId: true,
-      },
+      select: SELECT,
     });
   }
 
@@ -87,15 +84,7 @@ export class CustomerRepository {
   ): Promise<CustomerEntity | null> {
     return this.prisma.customer.findFirst({
       where: { name, organizationId, isDeleted: false },
-      select: {
-        id: true,
-        name: true,
-        taxId: true,
-        phone: true,
-        email: true,
-        address: true,
-        organizationId: true,
-      },
+      select: SELECT,
     });
   }
 
@@ -103,6 +92,7 @@ export class CustomerRepository {
     organizationId: string,
     data: {
       name: string;
+      type?: CustomerType;
       taxId?: string;
       phone?: string;
       email?: string;
@@ -111,15 +101,7 @@ export class CustomerRepository {
   ): Promise<CustomerEntity> {
     return this.prisma.customer.create({
       data: { ...data, organizationId },
-      select: {
-        id: true,
-        name: true,
-        taxId: true,
-        phone: true,
-        email: true,
-        address: true,
-        organizationId: true,
-      },
+      select: SELECT,
     });
   }
 
@@ -136,15 +118,7 @@ export class CustomerRepository {
     return this.prisma.customer.update({
       where: { id },
       data,
-      select: {
-        id: true,
-        name: true,
-        taxId: true,
-        phone: true,
-        email: true,
-        address: true,
-        organizationId: true,
-      },
+      select: SELECT,
     });
   }
 

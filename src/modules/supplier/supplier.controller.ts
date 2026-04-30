@@ -41,6 +41,7 @@ export class SupplierController {
       query.search,
       query.page ?? 1,
       query.limit ?? 20,
+      query.type,
     );
   }
 

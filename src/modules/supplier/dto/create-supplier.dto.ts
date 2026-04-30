@@ -1,18 +1,34 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { SupplierType } from '@prisma/client';
+import { Transform } from 'class-transformer';
 import {
   IsEmail,
+  IsEnum,
   IsInt,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   MinLength,
 } from 'class-validator';
 
 export class CreateSupplierDto {
-  @ApiProperty({ example: 'Supplier A' })
+  @ApiProperty({ example: 'Supplier A', minLength: 1, maxLength: 200 })
   @IsString()
+  @Transform(({ value }) =>
+    typeof value === 'string' ? value.trim() : (value as unknown),
+  )
   @MinLength(1)
+  @MaxLength(200)
   name!: string;
+
+  @ApiPropertyOptional({
+    enum: ['COMPANY', 'INDIVIDUAL'],
+    default: 'COMPANY',
+  })
+  @IsOptional()
+  @IsEnum(SupplierType)
+  type?: SupplierType;
 
   @ApiPropertyOptional({ example: 'Net 30' })
   @IsOptional()
