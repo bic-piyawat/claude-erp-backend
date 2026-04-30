@@ -149,4 +149,81 @@ describe('AuditTrailInterceptor', () => {
       });
     });
   });
+
+  describe('resolveEntityType (most-specific-first)', () => {
+    function expectEntityType(path: string, expected: string): Promise<void> {
+      return new Promise((resolve, reject) => {
+        const context = createMockContext('PATCH', {
+          userId: 'u-1',
+          organizationId: 'org-1',
+          body: { x: 1 },
+          params: { id: 'e-1' },
+          path,
+        });
+        const next = { handle: () => of({ id: 'e-1' }) };
+        interceptor.intercept(context, next).subscribe({
+          next: () => {
+            setTimeout(() => {
+              try {
+                expect(prisma.auditLog.create).toHaveBeenCalledWith(
+                  expect.objectContaining({
+                    data: expect.objectContaining({ entityType: expected }),
+                  }),
+                );
+                resolve();
+              } catch (err) {
+                reject(err);
+              }
+            }, 10);
+          },
+          error: reject,
+        });
+      });
+    }
+
+    it('resolves /projects/:id/cost-items/bulk-replace to CostItem', async () => {
+      await expectEntityType(
+        '/projects/proj-1/cost-items/bulk-replace',
+        'CostItem',
+      );
+    });
+
+    it('resolves /projects/:id/estimate-items/bulk-replace to EstimateItem', async () => {
+      await expectEntityType(
+        '/projects/proj-1/estimate-items/bulk-replace',
+        'EstimateItem',
+      );
+    });
+
+    it('resolves /projects/:id/attachments to Attachment', async () => {
+      await expectEntityType('/projects/proj-1/attachments', 'Attachment');
+    });
+
+    it('resolves /customers/:id/contacts/:cid to ContactPerson', async () => {
+      await expectEntityType(
+        '/customers/cust-1/contacts/contact-1',
+        'ContactPerson',
+      );
+    });
+
+    it('resolves /cost-items/:itemId to CostItem', async () => {
+      await expectEntityType('/cost-items/item-1', 'CostItem');
+    });
+
+    it('resolves /estimate-items/:itemId to EstimateItem', async () => {
+      await expectEntityType('/estimate-items/item-1', 'EstimateItem');
+    });
+
+    it('resolves /projects/:id/status to Project', async () => {
+      await expectEntityType('/projects/proj-1/status', 'Project');
+    });
+
+    it('resolves /projects/:id to Project', async () => {
+      await expectEntityType('/projects/proj-1', 'Project');
+    });
+
+    it('resolves /customers/:id to Customer', async () => {
+      await expectEntityType('/customers/cust-1', 'Customer');
+    });
+  });
 });
