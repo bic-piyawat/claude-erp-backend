@@ -18,11 +18,11 @@ interface CostItemInput {
 @Injectable()
 export class ProfitabilityService {
   compute(
-    estimatedRevenue: number,
+    totalProjectPrice: number,
     vatRate: number,
     costItems: CostItemInput[],
   ): ProfitabilityResult {
-    if (estimatedRevenue === 0) {
+    if (totalProjectPrice === 0) {
       return {
         totalRevenueNet: 0,
         totalCostNet: 0,
@@ -33,7 +33,7 @@ export class ProfitabilityService {
     }
 
     const vatFactor = 1 + vatRate / 100;
-    const totalRevenueNet = estimatedRevenue / vatFactor;
+    const totalRevenueNet = totalProjectPrice / vatFactor;
 
     const totalCostNet = costItems.reduce((sum, item) => {
       const netCost = item.vatIncluded

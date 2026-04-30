@@ -41,7 +41,7 @@ export class UpdateProjectDto {
   @IsOptional()
   @IsNumber()
   @Min(0)
-  estimatedRevenue?: number;
+  totalProjectPrice?: number;
 
   @ApiPropertyOptional()
   @IsOptional()

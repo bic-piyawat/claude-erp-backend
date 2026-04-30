@@ -15,13 +15,14 @@ function mockProject(overrides = {}): any {
   return {
     id: 'proj-1',
     name: 'Alpha ERP',
-    status: 'ACTIVE',
+    status: 'DRAFT',
     ownerId: 'u-1',
     customerId: null,
     stageId: 'stage-1',
-    estimatedRevenue: 500000,
+    totalProjectPrice: 500000,
     expectedCloseDate: null,
     customerPoNumber: null,
+    customerPoIssuedDate: null,
     organizationId: 'org-1',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -179,7 +180,7 @@ describe('ProjectService', () => {
       projectRepository.findById.mockResolvedValue(mockProject());
 
       await expect(
-        service.update('proj-1', 'org-1', { status: 'CLOSED_WON' } as any),
+        service.update('proj-1', 'org-1', { status: 'WON' } as any),
       ).rejects.toThrow(HttpException);
     });
 
@@ -193,7 +194,7 @@ describe('ProjectService', () => {
   });
 
   describe('delete', () => {
-    it('should soft delete an ACTIVE project', async () => {
+    it('should soft delete a DRAFT project', async () => {
       projectRepository.findById.mockResolvedValue(mockProject());
 
       await service.delete('proj-1', 'org-1');
@@ -201,9 +202,9 @@ describe('ProjectService', () => {
       expect(projectRepository.softDelete).toHaveBeenCalledWith('proj-1');
     });
 
-    it('should soft delete a CLOSED_WON project unconditionally', async () => {
+    it('should soft delete a WON project unconditionally', async () => {
       projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'CLOSED_WON' }),
+        mockProject({ status: 'WON' }),
       );
 
       await service.delete('proj-1', 'org-1');
@@ -213,9 +214,9 @@ describe('ProjectService', () => {
   });
 
   describe('transitionStage', () => {
-    it('should record history and update stageId for an ACTIVE project', async () => {
+    it('should record history and update stageId for a DRAFT project', async () => {
       projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'ACTIVE', stageId: 'stage-1' }),
+        mockProject({ status: 'DRAFT', stageId: 'stage-1' }),
       );
       (prisma.stage.findFirst as jest.Mock).mockResolvedValue({
         id: 'stage-2',
@@ -240,9 +241,9 @@ describe('ProjectService', () => {
       });
     });
 
-    it('should record history and update stageId for a CLOSED_WON project regardless of status', async () => {
+    it('should record history and update stageId for a WON project regardless of status', async () => {
       projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'CLOSED_WON', stageId: 'stage-cw' }),
+        mockProject({ status: 'WON', stageId: 'stage-cw' }),
       );
       (prisma.stage.findFirst as jest.Mock).mockResolvedValue({
         id: 'stage-2',
@@ -282,7 +283,7 @@ describe('ProjectService', () => {
   describe('getProfitability', () => {
     it('should return profitability calculation', async () => {
       projectRepository.findById.mockResolvedValue(
-        mockProject({ estimatedRevenue: 500000 }),
+        mockProject({ totalProjectPrice: 500000 }),
       );
       budgetRepository.findCurrentByProject.mockResolvedValue(mockBudget());
 
@@ -303,9 +304,9 @@ describe('ProjectService', () => {
       expect(result.diffs).toHaveLength(0);
     });
 
-    it('should return empty diffs for a CLOSED_WON project regardless of status', async () => {
+    it('should return empty diffs for a WON project regardless of status', async () => {
       projectRepository.findById.mockResolvedValue(
-        mockProject({ status: 'CLOSED_WON' }),
+        mockProject({ status: 'WON' }),
       );
       budgetRepository.findCurrentByProject.mockResolvedValue(null);
 
