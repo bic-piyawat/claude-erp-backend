@@ -1,4 +1,5 @@
 import { BadRequestException, NotFoundException } from '@nestjs/common';
+import { AttachmentCategory } from '@prisma/client';
 import { AttachmentService } from '../attachment.service';
 import { AttachmentRepository } from '../attachment.repository';
 
@@ -15,7 +16,7 @@ jest.mock('../cloudinary.config', () => ({
 
 import { cloudinary } from '../cloudinary.config';
 
-function mockAttachment(overrides = {}) {
+function mockAttachment(overrides: Record<string, unknown> = {}) {
   return {
     id: 'att-1',
     projectId: 'proj-1',
@@ -26,6 +27,7 @@ function mockAttachment(overrides = {}) {
     cloudinaryPublicId: 'org-1/proj-1/contract',
     uploadedBy: 'u-1',
     uploadedAt: new Date(),
+    category: AttachmentCategory.OTHER,
     organizationId: 'org-1',
     ...overrides,
   };
@@ -85,6 +87,75 @@ describe('AttachmentService', () => {
       await expect(
         service.upload('proj-1', 'org-1', 'u-1', largeFile),
       ).rejects.toThrow(BadRequestException);
+    });
+
+    it('should persist explicit category when provided', async () => {
+      (cloudinary.uploader.upload as jest.Mock).mockResolvedValue({
+        secure_url: 'https://res.cloudinary.com/test.pdf',
+        public_id: 'org-1/proj-1/contract',
+      });
+      repository.create.mockResolvedValue(
+        mockAttachment({ category: AttachmentCategory.CUSTOMER_PO }) as never,
+      );
+
+      const result = await service.upload(
+        'proj-1',
+        'org-1',
+        'u-1',
+        validFile,
+        AttachmentCategory.CUSTOMER_PO,
+      );
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ category: AttachmentCategory.CUSTOMER_PO }),
+      );
+      expect(result.category).toBe(AttachmentCategory.CUSTOMER_PO);
+    });
+
+    it('should default to OTHER when no category is provided', async () => {
+      (cloudinary.uploader.upload as jest.Mock).mockResolvedValue({
+        secure_url: 'https://res.cloudinary.com/test.pdf',
+        public_id: 'org-1/proj-1/contract',
+      });
+      repository.create.mockResolvedValue(mockAttachment() as never);
+
+      await service.upload('proj-1', 'org-1', 'u-1', validFile);
+
+      expect(repository.create).toHaveBeenCalledWith(
+        expect.objectContaining({ category: AttachmentCategory.OTHER }),
+      );
+    });
+  });
+
+  describe('findAllByProject', () => {
+    it('forwards category filter when provided', async () => {
+      repository.findAllByProject.mockResolvedValue([
+        mockAttachment({ category: AttachmentCategory.CUSTOMER_PO }) as never,
+      ]);
+
+      const result = await service.findAllByProject(
+        'proj-1',
+        AttachmentCategory.CUSTOMER_PO,
+      );
+
+      expect(repository.findAllByProject).toHaveBeenCalledWith(
+        'proj-1',
+        AttachmentCategory.CUSTOMER_PO,
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    it('passes undefined category when no filter is provided', async () => {
+      repository.findAllByProject.mockResolvedValue([
+        mockAttachment() as never,
+      ]);
+
+      await service.findAllByProject('proj-1');
+
+      expect(repository.findAllByProject).toHaveBeenCalledWith(
+        'proj-1',
+        undefined,
+      );
     });
   });
 
