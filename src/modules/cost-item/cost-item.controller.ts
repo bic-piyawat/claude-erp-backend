@@ -11,7 +11,7 @@ import {
   UseGuards,
   UseInterceptors,
 } from '@nestjs/common';
-import { ApiCookieAuth, ApiTags } from '@nestjs/swagger';
+import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import {
   OrganizationGuard,
   AuthenticatedRequest,
@@ -45,6 +45,11 @@ export class CostItemController {
   @Patch(':itemId')
   @UseInterceptors(AuditTrailInterceptor)
   @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    deprecated: true,
+    summary:
+      'Deprecated — use PATCH /cost-items/:itemId. This budget-scoped alias remains functional for backward compatibility.',
+  })
   async update(
     @Param('budgetId') budgetId: string,
     @Param('itemId') itemId: string,
@@ -56,6 +61,11 @@ export class CostItemController {
   @Delete(':itemId')
   @UseInterceptors(AuditTrailInterceptor)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({
+    deprecated: true,
+    summary:
+      'Deprecated — use DELETE /cost-items/:itemId. This budget-scoped alias remains functional for backward compatibility.',
+  })
   async delete(
     @Param('budgetId') budgetId: string,
     @Param('itemId') itemId: string,
