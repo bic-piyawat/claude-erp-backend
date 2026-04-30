@@ -1,10 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { SupplierType } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { PaginatedResult } from '../customer/customer.repository';
 
 export interface SupplierEntity {
   id: string;
   name: string;
+  type: SupplierType;
   paymentTerms: string | null;
   leadTimeDays: number | null;
   phone: string | null;
@@ -16,13 +18,14 @@ export interface SupplierEntity {
 const SELECT = {
   id: true,
   name: true,
+  type: true,
   paymentTerms: true,
   leadTimeDays: true,
   phone: true,
   email: true,
   address: true,
   organizationId: true,
-};
+} as const;
 
 @Injectable()
 export class SupplierRepository {
@@ -33,11 +36,13 @@ export class SupplierRepository {
     search: string | undefined,
     page: number,
     limit: number,
+    type?: SupplierType,
   ): Promise<PaginatedResult<SupplierEntity>> {
     const where = {
       organizationId,
       isDeleted: false,
       ...(search ? { name: { contains: search } } : {}),
+      ...(type ? { type } : {}),
     };
 
     const [data, totalItems] = await this.prisma.$transaction([
@@ -84,6 +89,7 @@ export class SupplierRepository {
     organizationId: string,
     data: {
       name: string;
+      type?: SupplierType;
       paymentTerms?: string;
       leadTimeDays?: number;
       phone?: string;

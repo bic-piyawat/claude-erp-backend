@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
+import { SupplierType } from '@prisma/client';
 import { SupplierService } from '../supplier.service';
 import { SupplierRepository } from '../supplier.repository';
 
@@ -7,6 +12,7 @@ function mockSupplier(overrides = {}) {
   return {
     id: 'sup-1',
     name: 'Supplier A',
+    type: SupplierType.COMPANY,
     paymentTerms: 'Net 30',
     leadTimeDays: 7,
     phone: null,
@@ -58,6 +64,66 @@ describe('SupplierService', () => {
 
       expect(result.data).toHaveLength(1);
     });
+
+    it('should pass through type filter to the repository', async () => {
+      repository.findAll.mockResolvedValue({
+        data: [mockSupplier()],
+        totalItems: 1,
+        totalPages: 1,
+        currentPage: 1,
+        itemsPerPage: 20,
+      });
+
+      await service.findAll('org-1', undefined, 1, 20, SupplierType.COMPANY);
+
+      expect(repository.findAll).toHaveBeenCalledWith(
+        'org-1',
+        undefined,
+        1,
+        20,
+        SupplierType.COMPANY,
+      );
+    });
+
+    it('should pass through INDIVIDUAL type filter', async () => {
+      repository.findAll.mockResolvedValue({
+        data: [mockSupplier({ type: SupplierType.INDIVIDUAL })],
+        totalItems: 1,
+        totalPages: 1,
+        currentPage: 1,
+        itemsPerPage: 20,
+      });
+
+      await service.findAll('org-1', undefined, 1, 20, SupplierType.INDIVIDUAL);
+
+      expect(repository.findAll).toHaveBeenCalledWith(
+        'org-1',
+        undefined,
+        1,
+        20,
+        SupplierType.INDIVIDUAL,
+      );
+    });
+
+    it('should not filter by type when type is undefined', async () => {
+      repository.findAll.mockResolvedValue({
+        data: [mockSupplier(), mockSupplier({ type: SupplierType.INDIVIDUAL })],
+        totalItems: 2,
+        totalPages: 1,
+        currentPage: 1,
+        itemsPerPage: 20,
+      });
+
+      await service.findAll('org-1', undefined, 1, 20);
+
+      expect(repository.findAll).toHaveBeenCalledWith(
+        'org-1',
+        undefined,
+        1,
+        20,
+        undefined,
+      );
+    });
   });
 
   describe('findById', () => {
@@ -67,6 +133,16 @@ describe('SupplierService', () => {
       const result = await service.findById('sup-1', 'org-1');
 
       expect(result.id).toBe('sup-1');
+    });
+
+    it('should return the supplier type', async () => {
+      repository.findById.mockResolvedValue(
+        mockSupplier({ type: SupplierType.INDIVIDUAL }),
+      );
+
+      const result = await service.findById('sup-1', 'org-1');
+
+      expect(result.type).toBe(SupplierType.INDIVIDUAL);
     });
 
     it('should throw NotFoundException when supplier not found', async () => {
@@ -86,6 +162,36 @@ describe('SupplierService', () => {
       const result = await service.create('org-1', { name: 'Supplier A' });
 
       expect(result.name).toBe('Supplier A');
+    });
+
+    it('should default type to COMPANY when type is not supplied', async () => {
+      repository.findByNameAndOrg.mockResolvedValue(null);
+      repository.create.mockResolvedValue(mockSupplier());
+
+      await service.create('org-1', { name: 'Supplier A' });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        'org-1',
+        expect.objectContaining({ type: SupplierType.COMPANY }),
+      );
+    });
+
+    it('should persist type=INDIVIDUAL when supplied', async () => {
+      repository.findByNameAndOrg.mockResolvedValue(null);
+      repository.create.mockResolvedValue(
+        mockSupplier({ type: SupplierType.INDIVIDUAL }),
+      );
+
+      const result = await service.create('org-1', {
+        name: 'Freelancer X',
+        type: SupplierType.INDIVIDUAL,
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        'org-1',
+        expect.objectContaining({ type: SupplierType.INDIVIDUAL }),
+      );
+      expect(result.type).toBe(SupplierType.INDIVIDUAL);
     });
 
     it('should throw ConflictException when name already exists', async () => {
@@ -118,6 +224,17 @@ describe('SupplierService', () => {
       await expect(service.update('bad-id', 'org-1', {})).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('should reject 422 BUSINESS_RULE_VIOLATION when type is in update body', async () => {
+      repository.findById.mockResolvedValue(mockSupplier());
+
+      await expect(
+        service.update('sup-1', 'org-1', {
+          type: SupplierType.INDIVIDUAL,
+        }),
+      ).rejects.toThrow(HttpException);
+      expect(repository.update).not.toHaveBeenCalled();
     });
   });
 

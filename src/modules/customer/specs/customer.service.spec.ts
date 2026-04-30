@@ -1,5 +1,10 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  HttpException,
+  NotFoundException,
+} from '@nestjs/common';
+import { CustomerType } from '@prisma/client';
 import { CustomerService } from '../customer.service';
 import { CustomerRepository } from '../customer.repository';
 
@@ -7,6 +12,7 @@ function mockCustomer(overrides = {}) {
   return {
     id: 'cust-1',
     name: 'Acme Corp',
+    type: CustomerType.COMPANY,
     taxId: null,
     phone: null,
     email: null,
@@ -69,6 +75,16 @@ describe('CustomerService', () => {
       expect(result.id).toBe('cust-1');
     });
 
+    it('should return the customer type', async () => {
+      repository.findById.mockResolvedValue(
+        mockCustomer({ type: CustomerType.GOVERNMENT }),
+      );
+
+      const result = await service.findById('cust-1', 'org-1');
+
+      expect(result.type).toBe(CustomerType.GOVERNMENT);
+    });
+
     it('should throw NotFoundException when customer not found', async () => {
       repository.findById.mockResolvedValue(null);
 
@@ -86,6 +102,54 @@ describe('CustomerService', () => {
       const result = await service.create('org-1', { name: 'Acme Corp' });
 
       expect(result.name).toBe('Acme Corp');
+    });
+
+    it('should default type to COMPANY when type is not supplied', async () => {
+      repository.findByNameAndOrg.mockResolvedValue(null);
+      repository.create.mockResolvedValue(mockCustomer());
+
+      await service.create('org-1', { name: 'Acme Corp' });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        'org-1',
+        expect.objectContaining({ type: CustomerType.COMPANY }),
+      );
+    });
+
+    it('should persist type=INDIVIDUAL when supplied', async () => {
+      repository.findByNameAndOrg.mockResolvedValue(null);
+      repository.create.mockResolvedValue(
+        mockCustomer({ type: CustomerType.INDIVIDUAL }),
+      );
+
+      const result = await service.create('org-1', {
+        name: 'Jane Doe',
+        type: CustomerType.INDIVIDUAL,
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        'org-1',
+        expect.objectContaining({ type: CustomerType.INDIVIDUAL }),
+      );
+      expect(result.type).toBe(CustomerType.INDIVIDUAL);
+    });
+
+    it('should persist type=GOVERNMENT when supplied', async () => {
+      repository.findByNameAndOrg.mockResolvedValue(null);
+      repository.create.mockResolvedValue(
+        mockCustomer({ type: CustomerType.GOVERNMENT }),
+      );
+
+      const result = await service.create('org-1', {
+        name: 'Ministry X',
+        type: CustomerType.GOVERNMENT,
+      });
+
+      expect(repository.create).toHaveBeenCalledWith(
+        'org-1',
+        expect.objectContaining({ type: CustomerType.GOVERNMENT }),
+      );
+      expect(result.type).toBe(CustomerType.GOVERNMENT);
     });
 
     it('should throw ConflictException when name already exists', async () => {
@@ -127,6 +191,17 @@ describe('CustomerService', () => {
       await expect(
         service.update('cust-1', 'org-1', { name: 'New Name' }),
       ).rejects.toThrow(ConflictException);
+    });
+
+    it('should reject 422 BUSINESS_RULE_VIOLATION when type is in update body', async () => {
+      repository.findById.mockResolvedValue(mockCustomer());
+
+      await expect(
+        service.update('cust-1', 'org-1', {
+          type: CustomerType.INDIVIDUAL,
+        }),
+      ).rejects.toThrow(HttpException);
+      expect(repository.update).not.toHaveBeenCalled();
     });
   });
 

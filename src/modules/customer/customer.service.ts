@@ -1,8 +1,11 @@
 import {
   ConflictException,
+  HttpException,
+  HttpStatus,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { CustomerType } from '@prisma/client';
 import {
   CustomerRepository,
   CustomerEntity,
@@ -10,6 +13,8 @@ import {
 } from './customer.repository';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+
+const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
 @Injectable()
 export class CustomerService {
@@ -45,7 +50,10 @@ export class CustomerService {
         'Customer name already exists in this organization',
       );
     }
-    return this.customerRepository.create(organizationId, dto);
+    return this.customerRepository.create(organizationId, {
+      ...dto,
+      type: dto.type ?? CustomerType.COMPANY,
+    });
   }
 
   async update(
@@ -53,6 +61,18 @@ export class CustomerService {
     organizationId: string,
     dto: UpdateCustomerDto,
   ): Promise<CustomerEntity> {
+    if ('type' in dto && dto.type !== undefined) {
+      throw new HttpException(
+        {
+          statusCode: 422,
+          code: BUSINESS_RULE_VIOLATION,
+          message:
+            'Customer type is immutable; create a new customer if type is wrong',
+        },
+        HttpStatus.UNPROCESSABLE_ENTITY,
+      );
+    }
+
     const customer = await this.customerRepository.findById(id, organizationId);
     if (!customer) {
       throw new NotFoundException('Customer not found');

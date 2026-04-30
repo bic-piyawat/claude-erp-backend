@@ -1,4 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
+import { CustomerType } from '@prisma/client';
 import { CustomerController } from '../customer.controller';
 import { CustomerService } from '../customer.service';
 import { OrganizationGuard } from '../../../common/guards/organization.guard';
@@ -16,6 +17,7 @@ function mockCustomer(overrides = {}) {
   return {
     id: 'cust-1',
     name: 'Acme Corp',
+    type: CustomerType.COMPANY,
     taxId: null,
     phone: null,
     email: null,

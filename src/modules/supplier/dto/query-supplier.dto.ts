@@ -1,12 +1,18 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
+import { SupplierType } from '@prisma/client';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 export class QuerySupplierDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   search?: string;
+
+  @ApiPropertyOptional({ enum: ['COMPANY', 'INDIVIDUAL'] })
+  @IsOptional()
+  @IsEnum(SupplierType)
+  type?: SupplierType;
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
