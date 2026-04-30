@@ -22,6 +22,7 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { StageTransitionDto } from './dto/stage-transition.dto';
 import { PaginatedResult } from '../customer/customer.repository';
+import { ProjectStatus } from '@prisma/client';
 
 const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
@@ -174,6 +175,167 @@ export class ProjectService {
       userId,
     );
     return this.projectRepository.update(id, { stageId: dto.stageId });
+  }
+
+  async updateStatus(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+    newStatus: ProjectStatus,
+  ): Promise<{
+    project: ProjectDetail;
+    suggestedStage: { id: string; name: string } | null;
+    budgetLocked: boolean;
+  }> {
+    const project = await this.projectRepository.findById(
+      projectId,
+      organizationId,
+    );
+    if (!project) throw new NotFoundException('Project not found');
+
+    const prevStatus = project.status;
+    const isTransitioningIntoWon =
+      newStatus === ProjectStatus.WON && prevStatus !== ProjectStatus.WON;
+
+    let budgetLocked = false;
+    if (isTransitioningIntoWon) {
+      budgetLocked = await this.applyWonSideEffects(
+        projectId,
+        organizationId,
+        userId,
+      );
+    }
+
+    // Bypass the routing-rule guard in `repository.update` (which 422s on `status` payload)
+    // by writing directly via Prisma. The /status endpoint is the legitimate path for status mutations.
+    await this.prisma.project.update({
+      where: { id: projectId },
+      data: { status: newStatus },
+    });
+
+    const updated = (await this.projectRepository.findById(
+      projectId,
+      organizationId,
+    )) as ProjectDetail;
+
+    // Manual STATUS_CHANGE audit entry (separate from the generic PATCH the interceptor records).
+    await this.prisma.auditLog.create({
+      data: {
+        entityType: 'Project',
+        entityId: projectId,
+        action: 'STATUS_CHANGE',
+        fieldChanged: 'status',
+        oldValue: prevStatus,
+        newValue: newStatus,
+        userId,
+        organizationId,
+      },
+    });
+
+    const suggestedStage = await this.suggestStageForStatus(
+      newStatus,
+      organizationId,
+    );
+
+    return { project: updated, suggestedStage, budgetLocked };
+  }
+
+  private async applyWonSideEffects(
+    projectId: string,
+    organizationId: string,
+    userId: string,
+  ): Promise<boolean> {
+    const currentBudget =
+      await this.budgetRepository.findCurrentByProject(projectId);
+    if (!currentBudget) return false;
+    if (currentBudget.status !== 'DRAFT') return false; // already locked → idempotent no-op
+
+    await this.budgetRepository.lockBudget(currentBudget.id);
+
+    // Snapshot a new DRAFT version so re-quote editing remains possible
+    // (matches the deleted Wave-0 closed-won behaviour — see git show 0c5bfbd).
+    const nextVersion = currentBudget.version + 1;
+    await this.budgetRepository.createVersion(
+      projectId,
+      nextVersion,
+      currentBudget.vatRate,
+      userId,
+      currentBudget.costItems,
+    );
+
+    const productItems = currentBudget.costItems.filter(
+      (item) => item.productId && item.unitPrice,
+    );
+
+    if (productItems.length > 0) {
+      await this.prisma.$transaction(
+        productItems.map((item) =>
+          this.prisma.product.update({
+            where: { id: item.productId! },
+            data: {
+              lastPrice: item.unitPrice,
+              lastUpdatedDate: new Date(),
+            },
+          }),
+        ),
+      );
+    }
+
+    // Side-effect audit entries (separate from the STATUS_CHANGE entry written by the caller).
+    const sideEffectLogs: Promise<unknown>[] = [
+      this.prisma.auditLog.create({
+        data: {
+          entityType: 'Budget',
+          entityId: currentBudget.id,
+          action: 'BUDGET_LOCK',
+          fieldChanged: 'status',
+          oldValue: 'DRAFT',
+          newValue: 'LOCKED',
+          userId,
+          organizationId,
+        },
+      }),
+      ...productItems.map((item) =>
+        this.prisma.auditLog.create({
+          data: {
+            entityType: 'Product',
+            entityId: item.productId!,
+            action: 'PRODUCT_LASTPRICE_SYNC',
+            fieldChanged: 'lastPrice',
+            oldValue: null,
+            newValue: String(item.unitPrice),
+            userId,
+            organizationId,
+          },
+        }),
+      ),
+    ];
+    await Promise.all(sideEffectLogs);
+
+    return true;
+  }
+
+  private async suggestStageForStatus(
+    status: ProjectStatus,
+    organizationId: string,
+  ): Promise<{ id: string; name: string } | null> {
+    const stageNameByStatus: Partial<Record<ProjectStatus, string>> = {
+      DRAFT: 'Lead',
+      PROPOSED: 'Proposal',
+      QUOTATION_SENT: 'Proposal',
+      UNDER_NEGOTIATION: 'Negotiation',
+      AWAITING_PO: 'Negotiation',
+      WON: 'Closed Won',
+      LOST: 'Closed Lost',
+      // ON_HOLD intentionally omitted → no suggestion.
+    };
+    const targetName = stageNameByStatus[status];
+    if (!targetName) return null;
+    const stage = await this.prisma.stage.findFirst({
+      where: { name: targetName, organizationId },
+      select: { id: true, name: true },
+    });
+    return stage;
   }
 
   async getProfitability(
