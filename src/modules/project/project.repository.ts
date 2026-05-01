@@ -24,6 +24,7 @@ export interface ProjectDetail {
   name: string;
   status: ProjectStatus;
   ownerId: string;
+  ownerName: string;
   customerId: string | null;
   stageId: string | null;
   totalProjectPrice: number | null;
@@ -36,6 +37,24 @@ export interface ProjectDetail {
   stage: { id: string; name: string } | null;
   customFieldValues: { definitionId: string; value: string | null }[];
   attachments: unknown[];
+}
+
+/**
+ * Compose a human-readable owner name from the User row's firstName / lastName,
+ * falling back to email when both name fields are blank/null. Mirrors how the
+ * mockup at `docs/ui-design/project-detail-page-ui-design.html` displays the
+ * owner ("Owner Bic Piyawat") in the project detail header.
+ */
+function composeOwnerName(owner: {
+  firstName: string | null;
+  lastName: string | null;
+  email: string;
+}): string {
+  const fullName = [owner.firstName, owner.lastName]
+    .map((p) => (p ?? "").trim())
+    .filter(Boolean)
+    .join(" ");
+  return fullName || owner.email;
 }
 
 @Injectable()
@@ -65,7 +84,7 @@ export class ProjectRepository {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          owner: { select: { id: true, email: true } },
+          owner: { select: { id: true, email: true, firstName: true, lastName: true } },
           customer: { select: { id: true, name: true } },
           stage: { select: { id: true, name: true } },
         },
@@ -78,7 +97,7 @@ export class ProjectRepository {
       name: p.name,
       status: p.status,
       ownerId: p.ownerId,
-      ownerName: p.owner.email,
+      ownerName: composeOwnerName(p.owner),
       customerId: p.customerId,
       customerName: p.customer?.name ?? null,
       stageId: p.stageId,
@@ -105,12 +124,18 @@ export class ProjectRepository {
     const project = await this.prisma.project.findFirst({
       where: { id, organizationId, isDeleted: false },
       include: {
+        owner: { select: { id: true, email: true, firstName: true, lastName: true } },
         stage: { select: { id: true, name: true } },
         customFieldValues: { select: { definitionId: true, value: true } },
         attachments: true,
       },
     });
-    return project as ProjectDetail | null;
+    if (!project) return null;
+    const { owner, ...rest } = project;
+    return {
+      ...rest,
+      ownerName: composeOwnerName(owner),
+    } as ProjectDetail;
   }
 
   async create(data: {
@@ -150,7 +175,7 @@ export class ProjectRepository {
       status?: ProjectStatus;
     },
   ): Promise<ProjectDetail> {
-    return this.prisma.project.update({
+    const updated = await this.prisma.project.update({
       where: { id },
       data: {
         ...data,
@@ -162,11 +187,17 @@ export class ProjectRepository {
           : undefined,
       },
       include: {
+        owner: { select: { id: true, email: true, firstName: true, lastName: true } },
         stage: { select: { id: true, name: true } },
         customFieldValues: { select: { definitionId: true, value: true } },
         attachments: true,
       },
-    }) as Promise<ProjectDetail>;
+    });
+    const { owner, ...rest } = updated;
+    return {
+      ...rest,
+      ownerName: composeOwnerName(owner),
+    } as ProjectDetail;
   }
 
   async softDelete(id: string): Promise<void> {
