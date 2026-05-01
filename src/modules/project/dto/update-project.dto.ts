@@ -53,6 +53,11 @@ export class UpdateProjectDto {
   @IsString()
   customerPoNumber?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsDateString()
+  customerPoIssuedDate?: string;
+
   @ApiPropertyOptional({ type: [CustomFieldValueUpdateDto] })
   @IsOptional()
   @IsArray()
