@@ -145,6 +145,7 @@ export class ProjectRepository {
       totalProjectPrice?: number;
       expectedCloseDate?: string;
       customerPoNumber?: string;
+      customerPoIssuedDate?: string;
       stageId?: string;
       status?: ProjectStatus;
     },
@@ -155,6 +156,9 @@ export class ProjectRepository {
         ...data,
         expectedCloseDate: data.expectedCloseDate
           ? new Date(data.expectedCloseDate)
+          : undefined,
+        customerPoIssuedDate: data.customerPoIssuedDate
+          ? new Date(data.customerPoIssuedDate)
           : undefined,
       },
       include: {
