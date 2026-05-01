@@ -46,6 +46,7 @@ describe('ProjectCostItemController', () => {
   beforeEach(async () => {
     service = {
       createForProject: jest.fn(),
+      findAllByProject: jest.fn(),
       bulkReplaceForProject: jest.fn(),
       updateById: jest.fn(),
       deleteById: jest.fn(),
@@ -114,6 +115,43 @@ describe('ProjectCostItemController', () => {
           unitPrice: 1,
         }),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('findAllByProject (GET projects/:projectId/cost-items)', () => {
+    it('returns the array of cost items for the project (200)', async () => {
+      const items = [mockCostItem(), mockCostItem({ id: 'item-2' })];
+      service.findAllByProject.mockResolvedValue(items as any);
+
+      const result = await controller.findAllByProject(
+        mockRequest() as any,
+        'proj-1',
+      );
+
+      expect(service.findAllByProject).toHaveBeenCalledWith('proj-1', 'org-1');
+      expect(Array.isArray(result)).toBe(true);
+      expect(result).toEqual(items);
+    });
+
+    it('returns an empty array when project has no current budget', async () => {
+      service.findAllByProject.mockResolvedValue([] as any);
+
+      const result = await controller.findAllByProject(
+        mockRequest() as any,
+        'proj-1',
+      );
+
+      expect(result).toEqual([]);
+    });
+
+    it('propagates 404 when project unknown', async () => {
+      service.findAllByProject.mockRejectedValue(
+        new NotFoundException('Project not found'),
+      );
+
+      await expect(
+        controller.findAllByProject(mockRequest() as any, 'unknown'),
+      ).rejects.toThrow(NotFoundException);
     });
   });
 

@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
@@ -43,6 +44,21 @@ export class ProjectCostItemController {
     return this.costItemService.createForProject(
       projectId,
       dto,
+      req.activeOrganizationId!,
+    );
+  }
+
+  @Get('projects/:projectId/cost-items')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'List cost items on the current Budget of a project',
+  })
+  async findAllByProject(
+    @Req() req: AuthenticatedRequest,
+    @Param('projectId') projectId: string,
+  ) {
+    return this.costItemService.findAllByProject(
+      projectId,
       req.activeOrganizationId!,
     );
   }

@@ -137,6 +137,13 @@ export class CostItemService {
     return this.create(budget.id, dto, organizationId);
   }
 
+  async findAllByProject(projectId: string, organizationId: string) {
+    await this.assertProjectInOrg(projectId, organizationId);
+    const budget = await this.budgetRepository.findCurrentByProject(projectId);
+    if (!budget) return [];
+    return this.costItemRepository.findAllByBudget(budget.id);
+  }
+
   async updateById(
     itemId: string,
     dto: UpdateCostItemDto,
