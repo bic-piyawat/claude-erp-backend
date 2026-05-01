@@ -55,6 +55,13 @@ export class CostItemRepository {
     return this.prisma.costItem.findFirst({ where: { id, isDeleted: false } });
   }
 
+  async findAllByBudget(budgetId: string) {
+    return this.prisma.costItem.findMany({
+      where: { budgetId, isDeleted: false },
+      orderBy: { id: 'asc' },
+    });
+  }
+
   async update(id: string, data: Partial<CreateCostItemData>) {
     return this.prisma.costItem.update({
       where: { id },

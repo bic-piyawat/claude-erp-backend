@@ -93,6 +93,7 @@ describe('CostItemService', () => {
     costItemRepository = {
       create: jest.fn(),
       findById: jest.fn(),
+      findAllByBudget: jest.fn(),
       update: jest.fn(),
       softDelete: jest.fn(),
     } as unknown as jest.Mocked<CostItemRepository>;
@@ -387,6 +388,81 @@ describe('CostItemService', () => {
       await expect(
         service.createForProject('proj-1', { qty: 1, unitPrice: 1 }, 'org-1'),
       ).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('findAllByProject', () => {
+    it("returns the current budget's cost items", async () => {
+      projectRepository.findById.mockResolvedValue(mockProject() as any);
+      budgetRepository.findCurrentByProject.mockResolvedValue(
+        mockBudgetWithItems('DRAFT') as any,
+      );
+      const items = [mockCostItem(), mockCostItem({ id: 'item-2' })];
+      costItemRepository.findAllByBudget.mockResolvedValue(items as any);
+
+      const result = await service.findAllByProject('proj-1', 'org-1');
+
+      expect(projectRepository.findById).toHaveBeenCalledWith(
+        'proj-1',
+        'org-1',
+      );
+      expect(budgetRepository.findCurrentByProject).toHaveBeenCalledWith(
+        'proj-1',
+      );
+      expect(costItemRepository.findAllByBudget).toHaveBeenCalledWith(
+        'budget-1',
+      );
+      expect(result).toEqual(items);
+    });
+
+    it('returns an empty array when project has no current budget', async () => {
+      projectRepository.findById.mockResolvedValue(mockProject() as any);
+      budgetRepository.findCurrentByProject.mockResolvedValue(null);
+
+      const result = await service.findAllByProject('proj-1', 'org-1');
+
+      expect(result).toEqual([]);
+      expect(costItemRepository.findAllByBudget).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when project not in active org', async () => {
+      projectRepository.findById.mockResolvedValue(null);
+
+      await expect(service.findAllByProject('proj-1', 'org-2')).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(budgetRepository.findCurrentByProject).not.toHaveBeenCalled();
+      expect(costItemRepository.findAllByBudget).not.toHaveBeenCalled();
+    });
+
+    it('relies on the repository to filter out soft-deleted items', async () => {
+      projectRepository.findById.mockResolvedValue(mockProject() as any);
+      budgetRepository.findCurrentByProject.mockResolvedValue(
+        mockBudgetWithItems('DRAFT') as any,
+      );
+      // Repo only returns non-deleted rows; service passes them through unchanged.
+      const activeOnly = [mockCostItem({ id: 'item-active' })];
+      costItemRepository.findAllByBudget.mockResolvedValue(activeOnly as any);
+
+      const result = await service.findAllByProject('proj-1', 'org-1');
+
+      expect(result).toEqual(activeOnly);
+      expect(result.every((i) => i.isDeleted === false)).toBe(true);
+    });
+
+    it('returns items even when the current budget is LOCKED (read-only)', async () => {
+      projectRepository.findById.mockResolvedValue(mockProject() as any);
+      budgetRepository.findCurrentByProject.mockResolvedValue(
+        mockBudgetWithItems('LOCKED') as any,
+      );
+      const items = [mockCostItem()];
+      costItemRepository.findAllByBudget.mockResolvedValue(items as any);
+
+      const result = await service.findAllByProject('proj-1', 'org-1');
+
+      expect(result).toEqual(items);
+      expect(budgetService.assertNotLocked).not.toHaveBeenCalled();
     });
   });
 
