@@ -11,6 +11,7 @@ import {
   ProjectDetail,
   ProjectListItem,
 } from './project.repository';
+import { ProjectSortField } from './dto/query-project.dto';
 import { BudgetRepository } from '../budget/budget.repository';
 import { OrganizationSettingsService } from '../organization-settings/organization-settings.service';
 import {
@@ -43,6 +44,9 @@ export class ProjectService {
     ownerId: string | undefined,
     page: number,
     limit: number,
+    customerId?: string,
+    sortBy?: ProjectSortField,
+    sortDir?: 'asc' | 'desc',
   ): Promise<PaginatedResult<ProjectListItem>> {
     return this.projectRepository.findAll(
       organizationId,
@@ -51,6 +55,9 @@ export class ProjectService {
       ownerId,
       page,
       limit,
+      customerId,
+      sortBy,
+      sortDir,
     );
   }
 

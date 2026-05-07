@@ -1,6 +1,20 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+
+export const PROJECT_SORTABLE_FIELDS = [
+  'name',
+  'ownerName',
+  'customerName',
+  'stageName',
+  'status',
+  'totalProjectPrice',
+  'totalCost',
+  'createdAt',
+  'expectedCloseDate',
+] as const;
+
+export type ProjectSortField = (typeof PROJECT_SORTABLE_FIELDS)[number];
 
 export class QueryProjectDto {
   @ApiPropertyOptional()
@@ -17,6 +31,21 @@ export class QueryProjectDto {
   @IsOptional()
   @IsString()
   ownerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  customerId?: string;
+
+  @ApiPropertyOptional({ enum: PROJECT_SORTABLE_FIELDS })
+  @IsOptional()
+  @IsIn(PROJECT_SORTABLE_FIELDS as unknown as string[])
+  sortBy?: ProjectSortField;
+
+  @ApiPropertyOptional({ enum: ['asc', 'desc'] })
+  @IsOptional()
+  @IsIn(['asc', 'desc'])
+  sortDir?: 'asc' | 'desc';
 
   @ApiPropertyOptional({ default: 1 })
   @IsOptional()
