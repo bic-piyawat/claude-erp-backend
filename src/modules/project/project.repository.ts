@@ -1,7 +1,9 @@
 import { Injectable } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { ProjectStatus } from '@prisma/client';
 import { PaginatedResult } from '../customer/customer.repository';
+import { ProjectSortField } from './dto/query-project.dto';
 
 export interface ProjectListItem {
   id: string;
@@ -14,6 +16,7 @@ export interface ProjectListItem {
   stageId: string | null;
   stageName: string | null;
   totalProjectPrice: number | null;
+  totalCost: number;
   expectedCloseDate: Date | null;
   organizationId: string;
   createdAt: Date;
@@ -51,9 +54,9 @@ function composeOwnerName(owner: {
   email: string;
 }): string {
   const fullName = [owner.firstName, owner.lastName]
-    .map((p) => (p ?? "").trim())
+    .map((p) => (p ?? '').trim())
     .filter(Boolean)
-    .join(" ");
+    .join(' ');
   return fullName || owner.email;
 }
 
@@ -68,45 +71,143 @@ export class ProjectRepository {
     ownerId: string | undefined,
     page: number,
     limit: number,
+    customerId?: string,
+    sortBy?: ProjectSortField,
+    sortDir?: 'asc' | 'desc',
   ): Promise<PaginatedResult<ProjectListItem>> {
-    const where = {
+    const dir: 'asc' | 'desc' = sortDir ?? 'desc';
+    const where: Prisma.ProjectWhereInput = {
       organizationId,
       isDeleted: false,
-      ...(search ? { name: { contains: search } } : {}),
+      ...(search
+        ? {
+            OR: [
+              { name: { contains: search } },
+              { owner: { firstName: { contains: search } } },
+              { owner: { lastName: { contains: search } } },
+              { owner: { email: { contains: search } } },
+              { customer: { name: { contains: search } } },
+            ],
+          }
+        : {}),
       ...(stageId ? { stageId } : {}),
       ...(ownerId ? { ownerId } : {}),
+      ...(customerId ? { customerId } : {}),
     };
 
-    const [items, totalItems] = await this.prisma.$transaction([
-      this.prisma.project.findMany({
-        where,
-        skip: (page - 1) * limit,
-        take: limit,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          owner: { select: { id: true, email: true, firstName: true, lastName: true } },
-          customer: { select: { id: true, name: true } },
-          stage: { select: { id: true, name: true } },
-        },
-      }),
-      this.prisma.project.count({ where }),
-    ]);
+    // Build Prisma orderBy from the validated sortBy allow-list. `totalCost` cannot
+    // be sorted via Prisma orderBy directly because it is an aggregate computed
+    // from CostItem rows (net-of-VAT per row). When sortBy === 'totalCost' we
+    // skip DB-level sort, fetch the page (after pagination) and sort in-memory
+    // after computing totalCost. Acceptable for v1 because limit=20 — for a
+    // larger page size we would need a DB-side aggregate (raw SQL) or a
+    // denormalized projects.totalCost column.
+    const isInMemorySort = sortBy === 'totalCost';
+    let orderBy:
+      | Prisma.ProjectOrderByWithRelationInput
+      | Prisma.ProjectOrderByWithRelationInput[];
+    if (!sortBy) {
+      orderBy = { createdAt: 'desc' };
+    } else {
+      switch (sortBy) {
+        case 'name':
+          orderBy = { name: dir };
+          break;
+        case 'ownerName':
+          orderBy = [
+            { owner: { firstName: dir } },
+            { owner: { lastName: dir } },
+          ];
+          break;
+        case 'customerName':
+          orderBy = { customer: { name: dir } };
+          break;
+        case 'stageName':
+          orderBy = { stage: { name: dir } };
+          break;
+        case 'status':
+          orderBy = { status: dir };
+          break;
+        case 'totalProjectPrice':
+          orderBy = { totalProjectPrice: dir };
+          break;
+        case 'createdAt':
+          orderBy = { createdAt: dir };
+          break;
+        case 'expectedCloseDate':
+          orderBy = { expectedCloseDate: dir };
+          break;
+        case 'totalCost':
+          // Stable secondary order while we re-sort in memory after the fetch.
+          orderBy = { createdAt: 'desc' };
+          break;
+      }
+    }
 
-    const data: ProjectListItem[] = items.map((p) => ({
-      id: p.id,
-      name: p.name,
-      status: p.status,
-      ownerId: p.ownerId,
-      ownerName: composeOwnerName(p.owner),
-      customerId: p.customerId,
-      customerName: p.customer?.name ?? null,
-      stageId: p.stageId,
-      stageName: p.stage?.name ?? null,
-      totalProjectPrice: p.totalProjectPrice,
-      expectedCloseDate: p.expectedCloseDate,
-      organizationId: p.organizationId,
-      createdAt: p.createdAt,
-    }));
+    const totalItems = await this.prisma.project.count({ where });
+
+    // For in-memory `totalCost` sort we still rely on DB pagination because the
+    // page is small (limit=20 v1). The result order within the page reflects
+    // the computed cost; cross-page ordering is therefore approximate. This is
+    // documented in PRJ-077-BE.
+    const items = await this.prisma.project.findMany({
+      where,
+      skip: (page - 1) * limit,
+      take: limit,
+      orderBy,
+      include: {
+        owner: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
+        customer: { select: { id: true, name: true } },
+        stage: { select: { id: true, name: true } },
+      },
+    });
+
+    const projectIds = items.map((p) => p.id);
+    const draftBudgets = projectIds.length
+      ? await this.prisma.budget.findMany({
+          where: { projectId: { in: projectIds }, status: 'DRAFT' },
+          include: { costItems: true },
+        })
+      : [];
+    const budgetByProject = new Map(draftBudgets.map((b) => [b.projectId, b]));
+
+    let data: ProjectListItem[] = items.map((p) => {
+      const budget = budgetByProject.get(p.id);
+      let totalCost = 0;
+      if (budget) {
+        const vatFactor = 1 + budget.vatRate;
+        const netCost = budget.costItems.reduce((sum, item) => {
+          const net = item.vatIncluded
+            ? item.lineTotal / vatFactor
+            : item.lineTotal;
+          return sum + net;
+        }, 0);
+        totalCost = Math.round(netCost * 100) / 100;
+      }
+      return {
+        id: p.id,
+        name: p.name,
+        status: p.status,
+        ownerId: p.ownerId,
+        ownerName: composeOwnerName(p.owner),
+        customerId: p.customerId,
+        customerName: p.customer?.name ?? null,
+        stageId: p.stageId,
+        stageName: p.stage?.name ?? null,
+        totalProjectPrice: p.totalProjectPrice,
+        totalCost,
+        expectedCloseDate: p.expectedCloseDate,
+        organizationId: p.organizationId,
+        createdAt: p.createdAt,
+      };
+    });
+
+    if (isInMemorySort) {
+      const factor = dir === 'asc' ? 1 : -1;
+      data = [...data].sort((a, b) => (a.totalCost - b.totalCost) * factor);
+    }
 
     return {
       data,
@@ -124,7 +225,9 @@ export class ProjectRepository {
     const project = await this.prisma.project.findFirst({
       where: { id, organizationId, isDeleted: false },
       include: {
-        owner: { select: { id: true, email: true, firstName: true, lastName: true } },
+        owner: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
         stage: { select: { id: true, name: true } },
         customFieldValues: { select: { definitionId: true, value: true } },
         attachments: true,
@@ -187,7 +290,9 @@ export class ProjectRepository {
           : undefined,
       },
       include: {
-        owner: { select: { id: true, email: true, firstName: true, lastName: true } },
+        owner: {
+          select: { id: true, email: true, firstName: true, lastName: true },
+        },
         stage: { select: { id: true, name: true } },
         customFieldValues: { select: { definitionId: true, value: true } },
         attachments: true,

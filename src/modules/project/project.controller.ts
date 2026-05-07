@@ -46,6 +46,9 @@ export class ProjectController {
       query.ownerId,
       query.page ?? 1,
       query.limit ?? 20,
+      query.customerId,
+      query.sortBy,
+      query.sortDir,
     );
   }
 
