@@ -11,7 +11,12 @@ import { AUTH_COOKIE_NAME } from '../../constants/auth.constant';
 interface MockRequest {
   cookies: Record<string, string>;
   headers: Record<string, string | string[] | undefined>;
-  user?: { userId: string; organizationIds: string[] };
+  user?: {
+    userId: string;
+    organizationIds: string[];
+    role?: string;
+    isFounder?: boolean;
+  };
   activeOrganizationId?: string;
 }
 
@@ -100,8 +105,26 @@ describe('OrganizationGuard', () => {
     expect(req.user).toEqual({
       userId: 'user-1',
       organizationIds: ['org-1', 'org-2'],
+      role: undefined,
+      isFounder: false,
     });
     expect(req.activeOrganizationId).toBe('org-2');
+  });
+
+  it('should propagate isFounder=true from JWT payload onto request.user', async () => {
+    jwtService.verifyAsync.mockResolvedValue({
+      sub: 'user-1',
+      organizationIds: ['org-1'],
+      isFounder: true,
+    });
+    const req: MockRequest = {
+      cookies: { [AUTH_COOKIE_NAME]: 'good.token' },
+      headers: { 'x-organization-id': 'org-1' },
+    };
+
+    await guard.canActivate(createMockContext(req));
+
+    expect(req.user?.isFounder).toBe(true);
   });
 
   it('should fall back to active_org cookie when header is absent', async () => {

@@ -33,6 +33,11 @@ model User {
   password             String
   firstName            String
   lastName             String
+  // System-level platform super-admin flag. A user with isFounder=true can
+  // act in any organization, regardless of per-org Membership.role. The
+  // legacy FOUNDER value on Membership.role is deprecated; see Role enum
+  // below and migration 20260507_founder_as_system_role.
+  isFounder            Boolean               @default(false)
   avatarUrl            String?
   isDeleted            Boolean               @default(false)
   memberships          Membership[]
@@ -57,6 +62,12 @@ model Membership {
   @@map("memberships")
 }
 
+// FOUNDER on Membership.role is DEPRECATED.
+// The platform-level FOUNDER now lives on User.isFounder (system-level).
+// Membership.role values used today: SUPER_ADMIN | ADMIN | MEMBER.
+// FOUNDER stays in this enum for one release cycle (backwards compat for
+// any client still echoing old data); a follow-up PR will drop it once
+// FE + e2e clients confirm reliance on User.isFounder only.
 enum Role {
   FOUNDER
   ADMIN

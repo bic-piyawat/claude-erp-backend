@@ -17,10 +17,16 @@ interface JwtPayload {
   sub: string;
   organizationIds: string[];
   role?: string;
+  isFounder?: boolean;
 }
 
 export interface AuthenticatedRequest extends Request {
-  user?: { userId: string; organizationIds: string[]; role?: string };
+  user?: {
+    userId: string;
+    organizationIds: string[];
+    role?: string;
+    isFounder?: boolean;
+  };
   activeOrganizationId?: string;
 }
 
@@ -60,6 +66,7 @@ export class OrganizationGuard implements CanActivate {
       userId: payload.sub,
       organizationIds: payload.organizationIds,
       role: payload.role,
+      isFounder: payload.isFounder ?? false,
     };
     request.activeOrganizationId = activeOrganizationId;
     return true;

@@ -69,6 +69,7 @@ describe('AuthController', () => {
         firstName: 'Bic',
         lastName: 'Piyawat',
         avatarUrl: null,
+        isFounder: true,
       });
       service.getProfile.mockResolvedValue(profile);
       const req = {
@@ -85,6 +86,7 @@ describe('AuthController', () => {
         firstName: 'Bic',
         lastName: 'Piyawat',
         avatarUrl: null,
+        isFounder: true,
         organizationIds: ['org-1', 'org-2'],
         activeOrganizationId: 'org-2',
       });
@@ -102,8 +104,9 @@ describe('AuthController', () => {
           firstName: 'Bic',
           lastName: 'Piyawat',
           avatarUrl: null,
+          isFounder: true,
         },
-        organizations: [{ id: 'org-1', name: 'Acme', role: 'FOUNDER' }],
+        organizations: [{ id: 'org-1', name: 'Acme', role: 'SUPER_ADMIN' }],
       };
       service.login.mockResolvedValue(loginResult);
       const res = createMockResponse();
@@ -137,8 +140,9 @@ describe('AuthController', () => {
           firstName: 'Bic',
           lastName: 'Piyawat',
           avatarUrl: null,
+          isFounder: true,
         },
-        organizations: [{ id: 'org-1', name: 'Acme', role: 'FOUNDER' }],
+        organizations: [{ id: 'org-1', name: 'Acme', role: 'SUPER_ADMIN' }],
       });
       // The raw JWT must never appear in the response body
       expect(JSON.stringify(body)).not.toContain('jwt.signed.value');

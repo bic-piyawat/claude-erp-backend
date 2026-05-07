@@ -25,6 +25,14 @@ export class RolesGuard implements CanActivate {
 
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const userRole = request.user?.role;
+    const isFounder = request.user?.isFounder === true;
+
+    // System-level FOUNDER (User.isFounder) bypasses per-org role checks
+    // whenever Role.FOUNDER is in the required-roles list. The platform
+    // admin can act in any organization, regardless of Membership.role.
+    if (isFounder && requiredRoles.includes(Role.FOUNDER)) {
+      return true;
+    }
 
     if (!userRole || !requiredRoles.includes(userRole as Role)) {
       throw new ForbiddenException('Insufficient role');

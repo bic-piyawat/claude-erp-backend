@@ -20,6 +20,7 @@ export interface LoginUser {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  isFounder: boolean;
 }
 
 export interface LoginResult {
@@ -63,6 +64,7 @@ export class AuthService {
     const accessToken = await this.jwtService.signAsync({
       sub: user.id,
       organizationIds,
+      isFounder: user.isFounder,
     });
 
     return {
@@ -73,6 +75,7 @@ export class AuthService {
         firstName: user.firstName,
         lastName: user.lastName,
         avatarUrl: user.avatarUrl,
+        isFounder: user.isFounder,
       },
       organizations: user.memberships.map((m) => ({
         id: m.organization.id,

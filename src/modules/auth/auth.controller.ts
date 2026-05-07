@@ -94,6 +94,7 @@ export class AuthController {
       firstName: profile.firstName,
       lastName: profile.lastName,
       avatarUrl: profile.avatarUrl,
+      isFounder: profile.isFounder,
       organizationIds: req.user!.organizationIds,
       activeOrganizationId: req.activeOrganizationId!,
     };

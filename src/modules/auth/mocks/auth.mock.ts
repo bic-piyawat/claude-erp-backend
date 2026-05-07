@@ -7,6 +7,7 @@ export interface MockUserWithMemberships {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  isFounder: boolean;
   isDeleted: boolean;
   memberships: {
     organizationId: string;
@@ -25,11 +26,14 @@ export function createMockUserWithMemberships(
     firstName: 'Bic',
     lastName: 'Piyawat',
     avatarUrl: null,
+    // System-level platform FOUNDER. Per-org Membership.role uses
+    // SUPER_ADMIN (or any non-FOUNDER value). See feature/founder-as-system-role.
+    isFounder: true,
     isDeleted: false,
     memberships: [
       {
         organizationId: 'org-1',
-        role: MembershipRoleEnum.FOUNDER,
+        role: MembershipRoleEnum.SUPER_ADMIN,
         organization: { id: 'org-1', name: 'Acme Corporation' },
       },
     ],
@@ -43,6 +47,7 @@ export interface MockUserProfile {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  isFounder: boolean;
 }
 
 export function createMockUserProfile(
@@ -54,6 +59,7 @@ export function createMockUserProfile(
     firstName: 'Bic',
     lastName: 'Piyawat',
     avatarUrl: null,
+    isFounder: true,
     ...overrides,
   };
 }
@@ -83,7 +89,7 @@ export function createMockMembership(
   return {
     organizationId: 'org-1',
     organizationName: 'Acme Corporation',
-    role: MembershipRoleEnum.FOUNDER,
+    role: MembershipRoleEnum.SUPER_ADMIN,
     ...overrides,
   };
 }
