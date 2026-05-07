@@ -92,7 +92,7 @@ async function seedOrgExtras(
 ): Promise<void> {
   await prisma.organizationSettings.upsert({
     where: { organizationId },
-    create: { organizationId, vatRate: 7 },
+    create: { organizationId, vatRate: 0.07 },
     update: {},
   });
 

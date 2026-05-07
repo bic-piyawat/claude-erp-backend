@@ -438,7 +438,7 @@ export class ProjectService {
     const newVersion = await this.budgetRepository.createVersion(
       id,
       (refreshedBudget?.version ?? 0) + 1,
-      refreshedBudget?.vatRate ?? 7,
+      refreshedBudget?.vatRate ?? 0.07,
       userId,
       refreshedBudget?.costItems ?? [],
     );

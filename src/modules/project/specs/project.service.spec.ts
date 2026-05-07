@@ -39,7 +39,7 @@ function mockBudget(overrides = {}): any {
     projectId: 'proj-1',
     version: 1,
     status: 'DRAFT',
-    vatRate: 7,
+    vatRate: 0.07,
     lockedAt: null,
     createdBy: 'u-1',
     createdAt: new Date(),
@@ -76,7 +76,7 @@ describe('ProjectService', () => {
     } as unknown as jest.Mocked<BudgetRepository>;
 
     orgSettingsService = {
-      getSettings: jest.fn().mockResolvedValue({ vatRate: 7 }),
+      getSettings: jest.fn().mockResolvedValue({ vatRate: 0.07 }),
     } as unknown as jest.Mocked<OrganizationSettingsService>;
 
     profitabilityService = {
@@ -158,7 +158,7 @@ describe('ProjectService', () => {
       expect(budgetRepository.createVersion).toHaveBeenCalledWith(
         'proj-1',
         1,
-        7,
+        0.07,
         'u-1',
         [],
       );
@@ -291,7 +291,7 @@ describe('ProjectService', () => {
 
       const result = await service.getProfitability('proj-1', 'org-1');
 
-      expect(profitabilityService.compute).toHaveBeenCalledWith(500000, 7, []);
+      expect(profitabilityService.compute).toHaveBeenCalledWith(500000, 0.07, []);
       expect(result.colorBand).toBe('GREEN');
     });
   });
@@ -464,7 +464,7 @@ describe('ProjectService', () => {
           id: 'budget-1',
           version: 1,
           status: 'DRAFT',
-          vatRate: 7,
+          vatRate: 0.07,
           costItems: [costItem({ productId: 'prod-1', unitPrice: 100 })],
         }),
       );
@@ -487,7 +487,7 @@ describe('ProjectService', () => {
       expect(budgetRepository.createVersion).toHaveBeenCalledWith(
         'proj-1',
         2,
-        7,
+        0.07,
         'u-1',
         expect.any(Array),
       );
@@ -511,7 +511,7 @@ describe('ProjectService', () => {
         mockBudget({
           id: 'budget-1',
           version: 1,
-          vatRate: 7,
+          vatRate: 0.07,
           costItems: [
             costItem({ id: 'ci-1', productId: 'prod-1', unitPrice: 100 }),
             costItem({ id: 'ci-2', productId: 'prod-2', unitPrice: 200 }),
