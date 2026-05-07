@@ -3,6 +3,7 @@ import {
   OrganizationSettingsRepository,
   OrganizationSettingsEntity,
 } from './organization-settings.repository';
+import { VAT } from '../../common/constants/vat.constant';
 
 @Injectable()
 export class OrganizationSettingsService {
@@ -15,7 +16,7 @@ export class OrganizationSettingsService {
       await this.organizationSettingsRepository.findByOrganizationId(
         organizationId,
       );
-    return { vatRate: settings?.vatRate ?? 0.07 };
+    return { vatRate: settings?.vatRate ?? VAT.DEFAULT_RATE };
   }
 
   async updateSettings(

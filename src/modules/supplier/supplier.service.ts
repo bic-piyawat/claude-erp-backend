@@ -10,8 +10,8 @@ import { SupplierRepository, SupplierEntity } from './supplier.repository';
 import { PaginatedResult } from '../customer/customer.repository';
 import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
+import { BUSINESS_RULE_ERROR_CODE } from '../../common/constants/business-rule-error-code.constant';
 
-const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
 @Injectable()
 export class SupplierService {
@@ -66,7 +66,7 @@ export class SupplierService {
       throw new HttpException(
         {
           statusCode: 422,
-          code: BUSINESS_RULE_VIOLATION,
+          code: BUSINESS_RULE_ERROR_CODE.BUSINESS_RULE_VIOLATION,
           message:
             'Supplier type is immutable; create a new supplier if type is wrong',
         },

@@ -5,8 +5,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { StageRepository, StageEntity } from './stage.repository';
+import { BUSINESS_RULE_ERROR_CODE } from '../../common/constants/business-rule-error-code.constant';
 
-const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
 @Injectable()
 export class StageService {
@@ -47,7 +47,7 @@ export class StageService {
       throw new HttpException(
         {
           statusCode: 422,
-          code: BUSINESS_RULE_VIOLATION,
+          code: BUSINESS_RULE_ERROR_CODE.BUSINESS_RULE_VIOLATION,
           message: 'Stage has active projects',
         },
         HttpStatus.UNPROCESSABLE_ENTITY,

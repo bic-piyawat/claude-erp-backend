@@ -9,6 +9,8 @@ import {
   CostItemEntity,
 } from './budget.repository';
 import { PrismaService } from '../../database/prisma.service';
+import { AUDIT_ACTION } from '../../common/constants/audit-action.constant';
+import { BudgetStatus } from '@prisma/client';
 
 export interface BudgetCompareResult {
   added: CostItemEntity[];
@@ -149,7 +151,7 @@ export class BudgetService {
       data: {
         entityType: 'Budget',
         entityId: id,
-        action: 'UNLOCK',
+        action: AUDIT_ACTION.UNLOCK,
         fieldChanged: 'status',
         oldValue: 'LOCKED',
         newValue: 'DRAFT',
@@ -164,7 +166,7 @@ export class BudgetService {
   async assertNotLocked(budgetId: string): Promise<void> {
     const budget = await this.budgetRepository.findById(budgetId);
     if (!budget) throw new NotFoundException('Budget not found');
-    if (budget.status === 'LOCKED') {
+    if (budget.status === BudgetStatus.LOCKED) {
       throw new ForbiddenException('Budget is locked');
     }
   }

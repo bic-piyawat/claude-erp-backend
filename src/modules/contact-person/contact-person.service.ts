@@ -13,8 +13,8 @@ import {
 } from './contact-person.repository';
 import { CreateContactPersonDto } from './dto/create-contact-person.dto';
 import { UpdateContactPersonDto } from './dto/update-contact-person.dto';
+import { BUSINESS_RULE_ERROR_CODE } from '../../common/constants/business-rule-error-code.constant';
 
-const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
 @Injectable()
 export class ContactPersonService {
@@ -176,7 +176,7 @@ export class ContactPersonService {
       throw new HttpException(
         {
           statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-          code: BUSINESS_RULE_VIOLATION,
+          code: BUSINESS_RULE_ERROR_CODE.BUSINESS_RULE_VIOLATION,
           message:
             'INDIVIDUAL customers do not support contact persons; use the customer scalar phone/email fields instead',
         },
