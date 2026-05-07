@@ -34,12 +34,12 @@ describe('navigation.constant', () => {
     expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
   });
 
-  it('navigationForRole(FOUNDER) includes founder-only entries', () => {
+  it('navigationForRole(FOUNDER) includes platformSettings but NOT customFields (PRJ-073: customFields is org SUPER_ADMIN only)', () => {
     const keys = navigationForRole(MembershipRoleEnum.FOUNDER).map(
       (i) => i.key,
     );
     expect(keys).toContain('platformSettings');
-    expect(keys).toContain('customFields');
+    expect(keys).not.toContain('customFields');
   });
 
   it('navigationForRole(SUPER_ADMIN) includes orgSettings but not platformSettings', () => {

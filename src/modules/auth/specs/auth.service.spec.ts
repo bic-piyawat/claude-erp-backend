@@ -267,7 +267,7 @@ describe('AuthService', () => {
   });
 
   describe('getNavigation', () => {
-    it('FOUNDER → base + customFields + platformSettings', async () => {
+    it('FOUNDER → base + platformSettings only (PRJ-073: customFields is org SUPER_ADMIN only)', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('FOUNDER');
 
       const items = await service.getNavigation('u1', 'org-1', false);
@@ -279,7 +279,6 @@ describe('AuthService', () => {
       expect(items.map((i) => i.key)).toEqual([
         'overview',
         'projects',
-        'customFields',
         'platformSettings',
       ]);
     });
@@ -329,9 +328,10 @@ describe('AuthService', () => {
       );
     });
 
-    it('system FOUNDER (isFounder=true) sees org-scoped nav merged with platform-admin items', async () => {
-      // Founder is MEMBER of this org but isFounder=true at the system level —
-      // they should still see Platform Settings and Custom Fields admin.
+    it('system FOUNDER as MEMBER of active org sees platformSettings but NOT customFields (PRJ-073: customFields is strictly org SUPER_ADMIN of active org)', async () => {
+      // FOUNDER's system role grants Platform Settings everywhere, but Custom
+      // Fields requires being SUPER_ADMIN of the *active* organization.
+      // A founder browsing an org where they're only MEMBER does NOT see it.
       repository.findRoleForUserInOrg.mockResolvedValue('MEMBER');
 
       const items = await service.getNavigation('founder-id', 'org-1', true);
@@ -339,17 +339,18 @@ describe('AuthService', () => {
 
       expect(keys).toContain('overview');
       expect(keys).toContain('projects');
-      expect(keys).toContain('customFields');
       expect(keys).toContain('platformSettings');
+      expect(keys).not.toContain('customFields');
       expect(keys.length).toBe(new Set(keys).size); // no duplicates
     });
 
-    it('FOUNDER + SUPER_ADMIN of active org sees customFields exactly once (de-duped by key)', async () => {
+    it('system FOUNDER who IS SUPER_ADMIN of the active org sees customFields (from SUPER_ADMIN nav) AND platformSettings (from FOUNDER), de-duped', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('SUPER_ADMIN');
 
       const items = await service.getNavigation('founder-id', 'org-1', true);
       const keys = items.map((i) => i.key);
 
+      // customFields comes from the SUPER_ADMIN side, NOT FOUNDER side post-PRJ-073.
       expect(keys.filter((k) => k === 'customFields')).toHaveLength(1);
       expect(keys).toContain('orgSettings');       // from SUPER_ADMIN
       expect(keys).toContain('platformSettings');  // from FOUNDER
