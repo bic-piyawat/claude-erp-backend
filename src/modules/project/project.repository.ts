@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { Prisma, BudgetStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { ProjectStatus } from '@prisma/client';
 import { PaginatedResult } from '../customer/customer.repository';
@@ -167,7 +167,7 @@ export class ProjectRepository {
     const projectIds = items.map((p) => p.id);
     const draftBudgets = projectIds.length
       ? await this.prisma.budget.findMany({
-          where: { projectId: { in: projectIds }, status: 'DRAFT' },
+          where: { projectId: { in: projectIds }, status: BudgetStatus.DRAFT },
           include: { costItems: true },
         })
       : [];

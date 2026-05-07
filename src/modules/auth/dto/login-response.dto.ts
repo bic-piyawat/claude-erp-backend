@@ -31,7 +31,10 @@ export class LoginOrganizationDto {
   @ApiProperty()
   name!: string;
 
-  @ApiProperty({ example: 'FOUNDER' })
+  // inline-literal-ok: Swagger example value. Membership.role is one of
+  // SUPER_ADMIN | ADMIN | MEMBER (see Role enum). FOUNDER is no longer a
+  // Membership.role post-PR #21 — it lives on User.isFounder.
+  @ApiProperty({ example: 'SUPER_ADMIN' })
   role!: string;
 }
 
@@ -58,9 +61,10 @@ export class MembershipResponseDto {
   @ApiProperty({ description: 'Organization display name' })
   organizationName!: string;
 
+  // inline-literal-ok: Swagger example value. See note on LoginOrganizationDto.
   @ApiProperty({
-    example: 'FOUNDER',
-    description: 'Membership role (e.g. FOUNDER, ADMIN, MEMBER)',
+    example: 'SUPER_ADMIN',
+    description: 'Membership role (one of SUPER_ADMIN | ADMIN | MEMBER). FOUNDER lives on User.isFounder.',
   })
   role!: string;
 }
@@ -119,7 +123,8 @@ export class SwitchOrganizationResponseDto {
   @ApiProperty()
   organizationName!: string;
 
-  @ApiProperty({ example: 'FOUNDER' })
+  // inline-literal-ok: Swagger example value. See note on LoginOrganizationDto.
+  @ApiProperty({ example: 'SUPER_ADMIN' })
   role!: string;
 }
 

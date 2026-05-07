@@ -121,14 +121,14 @@ export class BudgetRepository {
   async lockBudget(id: string): Promise<BudgetEntity> {
     return this.prisma.budget.update({
       where: { id },
-      data: { status: 'LOCKED', lockedAt: new Date() },
+      data: { status: BudgetStatus.LOCKED, lockedAt: new Date() },
     }) as Promise<BudgetEntity>;
   }
 
   async unlockBudget(id: string): Promise<BudgetEntity> {
     return this.prisma.budget.update({
       where: { id },
-      data: { status: 'DRAFT', lockedAt: null },
+      data: { status: BudgetStatus.DRAFT, lockedAt: null },
     }) as Promise<BudgetEntity>;
   }
 }

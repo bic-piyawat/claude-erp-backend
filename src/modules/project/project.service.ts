@@ -23,9 +23,12 @@ import { CreateProjectDto } from './dto/create-project.dto';
 import { UpdateProjectDto } from './dto/update-project.dto';
 import { StageTransitionDto } from './dto/stage-transition.dto';
 import { PaginatedResult } from '../customer/customer.repository';
-import { ProjectStatus } from '@prisma/client';
+import { ProjectStatus, BudgetStatus } from '@prisma/client';
+import { BUSINESS_RULE_ERROR_CODE } from '../../common/constants/business-rule-error-code.constant';
+import { AUDIT_ACTION } from '../../common/constants/audit-action.constant';
+import { VAT } from '../../common/constants/vat.constant';
+import { STAGE_SUGGESTION_BY_STATUS } from '../../common/constants/stage-name.constant';
 
-const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
 @Injectable()
 export class ProjectService {
@@ -128,7 +131,7 @@ export class ProjectService {
       throw new HttpException(
         {
           statusCode: 422,
-          code: BUSINESS_RULE_VIOLATION,
+          code: BUSINESS_RULE_ERROR_CODE.BUSINESS_RULE_VIOLATION,
           message: 'Use /stage endpoint to change stage or status',
         },
         HttpStatus.UNPROCESSABLE_ENTITY,
@@ -230,7 +233,7 @@ export class ProjectService {
       data: {
         entityType: 'Project',
         entityId: projectId,
-        action: 'STATUS_CHANGE',
+        action: AUDIT_ACTION.STATUS_CHANGE,
         fieldChanged: 'status',
         oldValue: prevStatus,
         newValue: newStatus,
@@ -255,7 +258,7 @@ export class ProjectService {
     const currentBudget =
       await this.budgetRepository.findCurrentByProject(projectId);
     if (!currentBudget) return false;
-    if (currentBudget.status !== 'DRAFT') return false; // already locked → idempotent no-op
+    if (currentBudget.status !== BudgetStatus.DRAFT) return false; // already locked → idempotent no-op
 
     await this.budgetRepository.lockBudget(currentBudget.id);
 
@@ -294,7 +297,7 @@ export class ProjectService {
         data: {
           entityType: 'Budget',
           entityId: currentBudget.id,
-          action: 'BUDGET_LOCK',
+          action: AUDIT_ACTION.BUDGET_LOCK,
           fieldChanged: 'status',
           oldValue: 'DRAFT',
           newValue: 'LOCKED',
@@ -307,7 +310,7 @@ export class ProjectService {
           data: {
             entityType: 'Product',
             entityId: item.productId!,
-            action: 'PRODUCT_LASTPRICE_SYNC',
+            action: AUDIT_ACTION.PRODUCT_LASTPRICE_SYNC,
             fieldChanged: 'lastPrice',
             oldValue: null,
             newValue: String(item.unitPrice),
@@ -326,17 +329,7 @@ export class ProjectService {
     status: ProjectStatus,
     organizationId: string,
   ): Promise<{ id: string; name: string } | null> {
-    const stageNameByStatus: Partial<Record<ProjectStatus, string>> = {
-      DRAFT: 'Lead',
-      PROPOSED: 'Proposal',
-      QUOTATION_SENT: 'Proposal',
-      UNDER_NEGOTIATION: 'Negotiation',
-      AWAITING_PO: 'Negotiation',
-      WON: 'Closed Won',
-      LOST: 'Closed Lost',
-      // ON_HOLD intentionally omitted → no suggestion.
-    };
-    const targetName = stageNameByStatus[status];
+    const targetName = STAGE_SUGGESTION_BY_STATUS[status];
     if (!targetName) return null;
     const stage = await this.prisma.stage.findFirst({
       where: { name: targetName, organizationId },
@@ -428,7 +421,7 @@ export class ProjectService {
         data: {
           entityType: 'CostItem',
           entityId: itemId,
-          action: 'SYNC_MASTER',
+          action: AUDIT_ACTION.SYNC_MASTER,
           fieldChanged: 'unitPrice',
           oldValue: String(item.unitPrice),
           newValue: String(product.lastPrice),
@@ -445,7 +438,7 @@ export class ProjectService {
     const newVersion = await this.budgetRepository.createVersion(
       id,
       (refreshedBudget?.version ?? 0) + 1,
-      refreshedBudget?.vatRate ?? 0.07,
+      refreshedBudget?.vatRate ?? VAT.DEFAULT_RATE,
       userId,
       refreshedBudget?.costItems ?? [],
     );
@@ -458,7 +451,7 @@ export class ProjectService {
     if (!project) throw new NotFoundException('Project not found');
 
     const currentBudget = await this.budgetRepository.findCurrentByProject(id);
-    if (!currentBudget || currentBudget.status !== 'LOCKED') {
+    if (!currentBudget || currentBudget.status !== BudgetStatus.LOCKED) {
       throw new ForbiddenException(
         'Budget must be locked to generate draft PO',
       );

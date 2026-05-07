@@ -13,8 +13,8 @@ import {
 } from './customer.repository';
 import { CreateCustomerDto } from './dto/create-customer.dto';
 import { UpdateCustomerDto } from './dto/update-customer.dto';
+import { BUSINESS_RULE_ERROR_CODE } from '../../common/constants/business-rule-error-code.constant';
 
-const BUSINESS_RULE_VIOLATION = 'BUSINESS_RULE_VIOLATION';
 
 @Injectable()
 export class CustomerService {
@@ -65,7 +65,7 @@ export class CustomerService {
       throw new HttpException(
         {
           statusCode: 422,
-          code: BUSINESS_RULE_VIOLATION,
+          code: BUSINESS_RULE_ERROR_CODE.BUSINESS_RULE_VIOLATION,
           message:
             'Customer type is immutable; create a new customer if type is wrong',
         },

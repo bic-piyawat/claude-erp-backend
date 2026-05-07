@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CostItemCategory, CostItemStatus } from '@prisma/client';
+import { CostItemCategory, CostItemStatus, BudgetStatus } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { CostItemRepository } from './cost-item.repository';
 import { BudgetRepository } from '../budget/budget.repository';
@@ -17,6 +17,7 @@ import {
 import { CreateCostItemDto } from './dto/create-cost-item.dto';
 import { UpdateCostItemDto } from './dto/update-cost-item.dto';
 import { BulkReplaceCostItemsDto } from './dto/bulk-replace-cost-items.dto';
+import { AUDIT_ACTION } from '../../common/constants/audit-action.constant';
 
 interface ProductSnapshot {
   productName: string | null;
@@ -50,7 +51,7 @@ export class CostItemService {
   ) {
     const budget = await this.budgetRepository.findById(budgetId);
     if (!budget) throw new NotFoundException('Budget not found');
-    if (budget.status === 'LOCKED')
+    if (budget.status === BudgetStatus.LOCKED)
       throw new ForbiddenException('Budget is locked');
 
     let productName: string | null = null;
@@ -97,7 +98,7 @@ export class CostItemService {
   async update(budgetId: string, itemId: string, dto: UpdateCostItemDto) {
     const budget = await this.budgetRepository.findById(budgetId);
     if (!budget) throw new NotFoundException('Budget not found');
-    if (budget.status === 'LOCKED')
+    if (budget.status === BudgetStatus.LOCKED)
       throw new ForbiddenException('Budget is locked');
 
     const item = await this.costItemRepository.findById(itemId);
@@ -114,7 +115,7 @@ export class CostItemService {
   async delete(budgetId: string, itemId: string): Promise<void> {
     const budget = await this.budgetRepository.findById(budgetId);
     if (!budget) throw new NotFoundException('Budget not found');
-    if (budget.status === 'LOCKED')
+    if (budget.status === BudgetStatus.LOCKED)
       throw new ForbiddenException('Budget is locked');
 
     const item = await this.costItemRepository.findById(itemId);
@@ -223,7 +224,7 @@ export class CostItemService {
               data: {
                 entityType: 'CostItem',
                 entityId: removed.id,
-                action: 'BULK_REPLACE',
+                action: AUDIT_ACTION.BULK_REPLACE,
                 fieldChanged: 'isDeleted',
                 oldValue: 'false',
                 newValue: 'true',
@@ -275,7 +276,7 @@ export class CostItemService {
             data: {
               entityType: 'CostItem',
               entityId: created.id,
-              action: 'BULK_REPLACE',
+              action: AUDIT_ACTION.BULK_REPLACE,
               fieldChanged: 'created',
               oldValue: null,
               newValue: JSON.stringify({
