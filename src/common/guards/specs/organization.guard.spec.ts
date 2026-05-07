@@ -35,12 +35,19 @@ function createMockContext(request: MockRequest): ExecutionContext {
 describe('OrganizationGuard', () => {
   let guard: OrganizationGuard;
   let jwtService: jest.Mocked<JwtService>;
+  let authRepository: { findRoleForUserInOrg: jest.Mock };
 
   beforeEach(() => {
     jwtService = {
       verifyAsync: jest.fn(),
     } as unknown as jest.Mocked<JwtService>;
-    guard = new OrganizationGuard(jwtService);
+    authRepository = {
+      findRoleForUserInOrg: jest.fn().mockResolvedValue(null),
+    };
+    guard = new OrganizationGuard(
+      jwtService,
+      authRepository as unknown as ConstructorParameters<typeof OrganizationGuard>[1],
+    );
   });
 
   it('should throw UnauthorizedException when access_token cookie is missing', async () => {
