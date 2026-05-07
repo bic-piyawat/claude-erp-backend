@@ -25,15 +25,13 @@ const NAV_BASE: NavigationItem[] = [
   },
 ];
 
+// PRJ-073 (revised 2026-05-07): Custom Fields is strictly org SUPER_ADMIN — it
+// is intentionally NOT in NAV_FOUNDER. A platform FOUNDER who is also
+// SUPER_ADMIN of the active org will pick up customFields from NAV_SUPER_ADMIN
+// via the merge in navigationForRoleAndFounderFlag(); a FOUNDER who is only
+// MEMBER of the active org should NOT see customFields, and won't.
 const NAV_FOUNDER: NavigationItem[] = [
   ...NAV_BASE,
-  {
-    key: 'customFields',
-    labelKey: 'Sidebar.customFields',
-    path: '/admin/custom-fields',
-    icon: 'Settings',
-    order: 80,
-  },
   {
     key: 'platformSettings',
     labelKey: 'Sidebar.platformSettings',

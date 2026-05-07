@@ -27,7 +27,10 @@ import { ReorderCustomFieldsDto } from './dto/reorder-custom-fields.dto';
 @ApiTags('custom-fields')
 @ApiCookieAuth('access_token')
 @UseGuards(OrganizationGuard, RolesGuard)
-@Roles(Role.SUPER_ADMIN, Role.FOUNDER)
+// PRJ-073 (revised 2026-05-07): Custom Fields is strictly org SUPER_ADMIN.
+// FOUNDER (system role) is intentionally NOT granted access — managing custom
+// fields is a per-organization concern that the org's own super-admin owns.
+@Roles(Role.SUPER_ADMIN)
 @Controller('admin/custom-fields')
 export class CustomFieldController {
   constructor(private readonly customFieldService: CustomFieldService) {}
