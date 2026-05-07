@@ -10,7 +10,7 @@ function mockBudget(overrides = {}) {
     projectId: 'proj-1',
     version: 1,
     status: 'DRAFT' as const,
-    vatRate: 7,
+    vatRate: 0.07,
     lockedAt: null,
     createdBy: 'u-1',
     createdAt: new Date('2026-01-01'),
@@ -85,7 +85,7 @@ describe('BudgetService', () => {
       expect(repository.createVersion).toHaveBeenCalledWith(
         'proj-1',
         3,
-        7,
+        0.07,
         'u-1',
         [],
       );

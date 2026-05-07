@@ -17,6 +17,11 @@ interface CostItemInput {
 
 @Injectable()
 export class ProfitabilityService {
+  /**
+   * @param vatRate decimal rate (e.g. 0.07 for 7% VAT). Stored on Budget /
+   *   OrganizationSettings as a decimal so frontend and backend agree without
+   *   converting at the boundary.
+   */
   compute(
     totalProjectPrice: number,
     vatRate: number,
@@ -32,7 +37,7 @@ export class ProfitabilityService {
       };
     }
 
-    const vatFactor = 1 + vatRate / 100;
+    const vatFactor = 1 + vatRate;
     const totalRevenueNet = totalProjectPrice / vatFactor;
 
     const totalCostNet = costItems.reduce((sum, item) => {

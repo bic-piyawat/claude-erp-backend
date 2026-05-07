@@ -67,7 +67,7 @@ enum Role {
 model OrganizationSettings {
   id             String       @id @default(uuid())
   organizationId String       @unique
-  vatRate        Float        @default(7)
+  vatRate        Float        @default(0.07)
   organization   Organization @relation(fields: [organizationId], references: [id])
 }
 
@@ -234,7 +234,7 @@ model Budget {
   projectId     String
   version       Int
   status        BudgetStatus @default(DRAFT)
-  vatRate       Float        @default(7)
+  vatRate       Float        @default(0.07)
   lockedAt      DateTime?
   createdBy     String
   createdAt     DateTime     @default(now())

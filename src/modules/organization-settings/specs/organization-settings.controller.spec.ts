@@ -38,13 +38,13 @@ describe('OrganizationSettingsController', () => {
 
   describe('getSettings', () => {
     it('should return vatRate for the active organization', async () => {
-      service.getSettings.mockResolvedValue({ vatRate: 7 });
+      service.getSettings.mockResolvedValue({ vatRate: 0.07 });
       const req = mockRequest();
 
       const result = await controller.getSettings(req as any);
 
       expect(service.getSettings).toHaveBeenCalledWith('org-1');
-      expect(result.vatRate).toBe(7);
+      expect(result.vatRate).toBe(0.07);
     });
   });
 

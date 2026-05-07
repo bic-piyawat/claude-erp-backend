@@ -15,7 +15,7 @@ export class OrganizationSettingsService {
       await this.organizationSettingsRepository.findByOrganizationId(
         organizationId,
       );
-    return { vatRate: settings?.vatRate ?? 7 };
+    return { vatRate: settings?.vatRate ?? 0.07 };
   }
 
   async updateSettings(

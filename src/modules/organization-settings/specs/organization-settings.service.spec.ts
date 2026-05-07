@@ -40,12 +40,12 @@ describe('OrganizationSettingsService', () => {
       expect(result.vatRate).toBe(10);
     });
 
-    it('should return default vatRate of 7 when settings do not exist', async () => {
+    it('should return default vatRate of 0.07 when settings do not exist', async () => {
       repository.findByOrganizationId.mockResolvedValue(null);
 
       const result = await service.getSettings('org-1');
 
-      expect(result.vatRate).toBe(7);
+      expect(result.vatRate).toBe(0.07);
     });
   });
 

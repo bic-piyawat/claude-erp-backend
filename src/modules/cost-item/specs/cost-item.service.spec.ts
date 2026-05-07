@@ -18,7 +18,7 @@ function mockBudget(status: 'DRAFT' | 'LOCKED' = 'DRAFT') {
     projectId: 'proj-1',
     version: 1,
     status,
-    vatRate: 7,
+    vatRate: 0.07,
     lockedAt: null,
     createdBy: 'u-1',
     createdAt: new Date(),
@@ -781,7 +781,7 @@ describe('CostItemService', () => {
         'u-1',
       );
 
-      expect(profitabilityService.compute).toHaveBeenCalledWith(5000, 7, [
+      expect(profitabilityService.compute).toHaveBeenCalledWith(5000, 0.07, [
         { lineTotal: 100, vatIncluded: true },
       ]);
     });

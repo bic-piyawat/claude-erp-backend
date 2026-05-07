@@ -9,7 +9,7 @@ describe('ProfitabilityService', () => {
 
   describe('compute', () => {
     it('should return GREEN colorBand when grossMargin > 20%', () => {
-      const result = service.compute(500000, 7, [
+      const result = service.compute(500000, 0.07, [
         { lineTotal: 100000, vatIncluded: false },
       ]);
 
@@ -21,8 +21,8 @@ describe('ProfitabilityService', () => {
       // totalRevenueNet = 500000 / 1.07 ≈ 467289.72
       // to achieve exactly 20% grossMargin: totalCostNet = 80% of totalRevenueNet
       const revenue = 500000;
-      const vatRate = 7;
-      const totalRevenueNet = revenue / (1 + vatRate / 100);
+      const vatRate = 0.07;
+      const totalRevenueNet = revenue / (1 + vatRate);
       const targetCostNet = totalRevenueNet * 0.8;
 
       const result = service.compute(revenue, vatRate, [
@@ -35,8 +35,8 @@ describe('ProfitabilityService', () => {
 
     it('should return ORANGE colorBand when grossMargin is exactly 10%', () => {
       const revenue = 500000;
-      const vatRate = 7;
-      const totalRevenueNet = revenue / (1 + vatRate / 100);
+      const vatRate = 0.07;
+      const totalRevenueNet = revenue / (1 + vatRate);
       const targetCostNet = totalRevenueNet * 0.9;
 
       const result = service.compute(revenue, vatRate, [
@@ -49,8 +49,8 @@ describe('ProfitabilityService', () => {
 
     it('should return RED colorBand when grossMargin is 9.9%', () => {
       const revenue = 500000;
-      const vatRate = 7;
-      const totalRevenueNet = revenue / (1 + vatRate / 100);
+      const vatRate = 0.07;
+      const totalRevenueNet = revenue / (1 + vatRate);
       const targetCostNet = totalRevenueNet * 0.901;
 
       const result = service.compute(revenue, vatRate, [
@@ -61,7 +61,7 @@ describe('ProfitabilityService', () => {
     });
 
     it('should return RED colorBand when grossMargin is negative', () => {
-      const result = service.compute(100000, 7, [
+      const result = service.compute(100000, 0.07, [
         { lineTotal: 200000, vatIncluded: false },
       ]);
 
@@ -70,7 +70,7 @@ describe('ProfitabilityService', () => {
     });
 
     it('should return RED with grossMargin 0 when revenue is zero', () => {
-      const result = service.compute(0, 7, []);
+      const result = service.compute(0, 0.07, []);
 
       expect(result.colorBand).toBe('RED');
       expect(result.grossMargin).toBe(0);
@@ -78,8 +78,8 @@ describe('ProfitabilityService', () => {
 
     it('should correctly net VAT-included items', () => {
       const revenue = 500000;
-      const vatRate = 7;
-      const vatFactor = 1 + vatRate / 100;
+      const vatRate = 0.07;
+      const vatFactor = 1 + vatRate;
       const rawCost = 100000;
       const expectedNetCost = rawCost / vatFactor;
 
@@ -92,7 +92,7 @@ describe('ProfitabilityService', () => {
 
     it('should not net VAT for non-VAT-included items', () => {
       const revenue = 500000;
-      const vatRate = 7;
+      const vatRate = 0.07;
 
       const result = service.compute(revenue, vatRate, [
         { lineTotal: 100000, vatIncluded: false },
