@@ -270,7 +270,7 @@ describe('AuthService', () => {
     it('FOUNDER → base + customFields + platformSettings', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('FOUNDER');
 
-      const items = await service.getNavigation('u1', 'org-1');
+      const items = await service.getNavigation('u1', 'org-1', false);
 
       expect(repository.findRoleForUserInOrg).toHaveBeenCalledWith(
         'u1',
@@ -287,7 +287,7 @@ describe('AuthService', () => {
     it('SUPER_ADMIN → base + customFields + orgSettings', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('SUPER_ADMIN');
 
-      const items = await service.getNavigation('u1', 'org-1');
+      const items = await service.getNavigation('u1', 'org-1', false);
 
       expect(items.map((i) => i.key)).toEqual([
         'overview',
@@ -300,7 +300,7 @@ describe('AuthService', () => {
     it('ADMIN → base only', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('ADMIN');
 
-      const items = await service.getNavigation('u1', 'org-1');
+      const items = await service.getNavigation('u1', 'org-1', false);
 
       expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
     });
@@ -308,7 +308,7 @@ describe('AuthService', () => {
     it('MEMBER → base only', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('MEMBER');
 
-      const items = await service.getNavigation('u1', 'org-1');
+      const items = await service.getNavigation('u1', 'org-1', false);
 
       expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
     });
@@ -316,7 +316,7 @@ describe('AuthService', () => {
     it('unrecognised role → falls back to base (defensive, never throws)', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue('SOME_FUTURE_ROLE');
 
-      const items = await service.getNavigation('u1', 'org-1');
+      const items = await service.getNavigation('u1', 'org-1', false);
 
       expect(items.map((i) => i.key)).toEqual(['overview', 'projects']);
     });
@@ -324,9 +324,35 @@ describe('AuthService', () => {
     it('throws NotFoundException when no membership row exists for the active org', async () => {
       repository.findRoleForUserInOrg.mockResolvedValue(null);
 
-      await expect(service.getNavigation('u1', 'org-1')).rejects.toThrow(
+      await expect(service.getNavigation('u1', 'org-1', false)).rejects.toThrow(
         NotFoundException,
       );
+    });
+
+    it('system FOUNDER (isFounder=true) sees org-scoped nav merged with platform-admin items', async () => {
+      // Founder is MEMBER of this org but isFounder=true at the system level —
+      // they should still see Platform Settings and Custom Fields admin.
+      repository.findRoleForUserInOrg.mockResolvedValue('MEMBER');
+
+      const items = await service.getNavigation('founder-id', 'org-1', true);
+      const keys = items.map((i) => i.key);
+
+      expect(keys).toContain('overview');
+      expect(keys).toContain('projects');
+      expect(keys).toContain('customFields');
+      expect(keys).toContain('platformSettings');
+      expect(keys.length).toBe(new Set(keys).size); // no duplicates
+    });
+
+    it('FOUNDER + SUPER_ADMIN of active org sees customFields exactly once (de-duped by key)', async () => {
+      repository.findRoleForUserInOrg.mockResolvedValue('SUPER_ADMIN');
+
+      const items = await service.getNavigation('founder-id', 'org-1', true);
+      const keys = items.map((i) => i.key);
+
+      expect(keys.filter((k) => k === 'customFields')).toHaveLength(1);
+      expect(keys).toContain('orgSettings');       // from SUPER_ADMIN
+      expect(keys).toContain('platformSettings');  // from FOUNDER
     });
   });
 });

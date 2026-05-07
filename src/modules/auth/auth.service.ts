@@ -7,7 +7,10 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { AuthRepository, MembershipDto, UserProfile } from './auth.repository';
-import { NavigationItem, navigationForRole } from './navigation.constant';
+import {
+  NavigationItem,
+  navigationForRoleAndFounderFlag,
+} from './navigation.constant';
 
 export interface LoginInput {
   email: string;
@@ -131,6 +134,7 @@ export class AuthService {
   async getNavigation(
     userId: string,
     activeOrganizationId: string,
+    isFounder: boolean,
   ): Promise<NavigationItem[]> {
     const role = await this.authRepository.findRoleForUserInOrg(
       userId,
@@ -139,6 +143,10 @@ export class AuthService {
     if (!role) {
       throw new NotFoundException(NAVIGATION_MEMBERSHIP_NOT_FOUND);
     }
-    return navigationForRole(role);
+    // FOUNDER (system-level) sees the platform-admin nav set in addition to
+    // their org-scoped role nav. The merge is union by `key` so the platform
+    // founder also gets org admin items if they happen to be SUPER_ADMIN of
+    // the active org.
+    return navigationForRoleAndFounderFlag(role, isFounder);
   }
 }

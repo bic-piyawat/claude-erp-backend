@@ -174,6 +174,7 @@ export class AuthController {
     const items = await this.authService.getNavigation(
       req.user!.userId,
       req.activeOrganizationId!,
+      req.user!.isFounder ?? false,
     );
     return { data: items };
   }

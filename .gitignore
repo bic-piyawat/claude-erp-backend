@@ -19,3 +19,6 @@ npm-debug.log*
 
 # tests
 *.lcov
+
+# claude agent worktrees (local-only)
+.claude/worktrees/

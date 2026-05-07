@@ -292,13 +292,21 @@ describe('AuthController', () => {
       ];
       service.getNavigation.mockResolvedValue(items);
       const req = {
-        user: { userId: 'user-1', organizationIds: ['org-1', 'org-2'] },
+        user: {
+          userId: 'user-1',
+          organizationIds: ['org-1', 'org-2'],
+          isFounder: false,
+        },
         activeOrganizationId: 'org-2',
       } as unknown as Parameters<typeof controller.getMyNavigation>[0];
 
       const result = await controller.getMyNavigation(req);
 
-      expect(service.getNavigation).toHaveBeenCalledWith('user-1', 'org-2');
+      expect(service.getNavigation).toHaveBeenCalledWith(
+        'user-1',
+        'org-2',
+        false,
+      );
       expect(result).toEqual({ data: items });
     });
 
