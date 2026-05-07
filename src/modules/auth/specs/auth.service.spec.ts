@@ -68,13 +68,15 @@ describe('AuthService', () => {
         firstName: 'Bic',
         lastName: 'Piyawat',
         avatarUrl: null,
+        isFounder: true,
       });
       expect(result.organizations).toEqual([
-        { id: 'org-1', name: 'Acme Corporation', role: 'FOUNDER' },
+        { id: 'org-1', name: 'Acme Corporation', role: 'SUPER_ADMIN' },
       ]);
       expect(jwtService.signAsync).toHaveBeenCalledWith({
         sub: user.id,
         organizationIds: ['org-1'],
+        isFounder: true,
       });
     });
 
@@ -110,7 +112,7 @@ describe('AuthService', () => {
         memberships: [
           {
             organizationId: 'org-a',
-            role: 'FOUNDER',
+            role: 'SUPER_ADMIN',
             organization: { id: 'org-a', name: 'A' },
           },
           {
@@ -132,6 +134,37 @@ describe('AuthService', () => {
       expect(jwtService.signAsync).toHaveBeenCalledWith({
         sub: user.id,
         organizationIds: ['org-a', 'org-b'],
+        isFounder: true,
+      });
+    });
+
+    it('should sign isFounder=false in the JWT for non-founder users', async () => {
+      const plaintext = 'pw';
+      const hashed = await bcrypt.hash(plaintext, BCRYPT_SALT_ROUNDS);
+      const user = createMockUserWithMemberships({
+        password: hashed,
+        isFounder: false,
+        memberships: [
+          {
+            organizationId: 'org-1',
+            role: 'MEMBER',
+            organization: { id: 'org-1', name: 'Acme' },
+          },
+        ],
+      });
+      repository.findActiveUserByEmail.mockResolvedValue(user);
+      jwtService.signAsync.mockResolvedValue('jwt');
+
+      const result = await service.login({
+        email: user.email,
+        password: plaintext,
+      });
+
+      expect(result.user.isFounder).toBe(false);
+      expect(jwtService.signAsync).toHaveBeenCalledWith({
+        sub: user.id,
+        organizationIds: ['org-1'],
+        isFounder: false,
       });
     });
   });
@@ -152,6 +185,7 @@ describe('AuthService', () => {
         firstName: profile.firstName,
         lastName: profile.lastName,
         avatarUrl: profile.avatarUrl,
+        isFounder: profile.isFounder,
       });
     });
 

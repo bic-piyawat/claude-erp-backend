@@ -10,6 +10,7 @@ type CapturedUser = {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  isFounder: boolean;
 };
 type CapturedMembership = {
   id: string;
@@ -51,6 +52,9 @@ function createInMemoryPrisma(): {
         if (existing) {
           existing.firstName = update.firstName;
           existing.lastName = update.lastName;
+          if (typeof update.isFounder === 'boolean') {
+            existing.isFounder = update.isFounder;
+          }
           return existing;
         }
         const created: CapturedUser = {
@@ -60,6 +64,7 @@ function createInMemoryPrisma(): {
           firstName: create.firstName,
           lastName: create.lastName,
           avatarUrl: create.avatarUrl ?? null,
+          isFounder: create.isFounder ?? false,
         };
         state.users.push(created);
         return created;
@@ -167,7 +172,7 @@ describe('runSeed', () => {
     expect(await bcrypt.compare(plaintext, stored)).toBe(true);
   });
 
-  it('should create a Membership linking user to org with role FOUNDER', async () => {
+  it('should create a Membership linking user to org with role SUPER_ADMIN (FOUNDER is now system-level)', async () => {
     const { client, state } = createInMemoryPrisma();
 
     await runSeed(client, buildConfig());
@@ -176,7 +181,18 @@ describe('runSeed', () => {
     const membership = state.memberships[0];
     expect(membership.userId).toBe(state.users[0].id);
     expect(membership.organizationId).toBe(state.orgs[0].id);
-    expect(membership.role).toBe(MembershipRoleEnum.FOUNDER);
+    // FOUNDER lives on User.isFounder (system-level). Per-org admin =
+    // SUPER_ADMIN on Membership.role.
+    expect(membership.role).toBe(MembershipRoleEnum.SUPER_ADMIN);
+  });
+
+  it('should mark the seeded founder user as a system-level FOUNDER (User.isFounder = true)', async () => {
+    const { client, state } = createInMemoryPrisma();
+
+    await runSeed(client, buildConfig());
+
+    expect(state.users).toHaveLength(1);
+    expect(state.users[0].isFounder).toBe(true);
   });
 
   it('should be idempotent — running twice does not duplicate records', async () => {

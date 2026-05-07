@@ -28,8 +28,9 @@ export interface SeedPrismaClient {
         firstName: string;
         lastName: string;
         avatarUrl?: string | null;
+        isFounder?: boolean;
       };
-      update: { firstName: string; lastName: string };
+      update: { firstName: string; lastName: string; isFounder?: boolean };
     }) => Promise<{
       id: string;
       email: string;
@@ -37,6 +38,7 @@ export interface SeedPrismaClient {
       firstName: string;
       lastName: string;
       avatarUrl: string | null;
+      isFounder: boolean;
     }>;
   };
   membership: {
@@ -131,6 +133,10 @@ export async function runSeed(
     config.userPassword,
     BCRYPT_SALT_ROUNDS,
   );
+  // founder@acme.test is seeded as a system-level platform FOUNDER
+  // (User.isFounder = true). Their per-org memberships use SUPER_ADMIN —
+  // the platform admin role lives on the User, not on Membership. The
+  // legacy MembershipRoleEnum.FOUNDER value is no longer written here.
   const user = await prisma.user.upsert({
     where: { email: config.userEmail },
     create: {
@@ -138,8 +144,9 @@ export async function runSeed(
       password: hashedPassword,
       firstName: 'Bic',
       lastName: 'Piyawat',
+      isFounder: true,
     },
-    update: { firstName: 'Bic', lastName: 'Piyawat' },
+    update: { firstName: 'Bic', lastName: 'Piyawat', isFounder: true },
   });
 
   await prisma.membership.upsert({
@@ -152,7 +159,7 @@ export async function runSeed(
     create: {
       userId: user.id,
       organizationId: organization.id,
-      role: MembershipRoleEnum.FOUNDER,
+      role: MembershipRoleEnum.SUPER_ADMIN,
     },
     update: {},
   });

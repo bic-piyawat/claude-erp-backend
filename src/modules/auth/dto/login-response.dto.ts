@@ -16,6 +16,12 @@ export class LoginUserDto {
 
   @ApiProperty({ nullable: true, type: String })
   avatarUrl!: string | null;
+
+  @ApiProperty({
+    description:
+      'System-level platform-admin flag. When true, the user is a platform FOUNDER and may act in any organization regardless of Membership.role.',
+  })
+  isFounder!: boolean;
 }
 
 export class LoginOrganizationDto {
@@ -79,6 +85,12 @@ export class MeResponseDto {
 
   @ApiProperty({ nullable: true, type: String })
   avatarUrl!: string | null;
+
+  @ApiProperty({
+    description:
+      'System-level platform-admin flag. When true, the user is a platform FOUNDER and may act in any organization regardless of Membership.role.',
+  })
+  isFounder!: boolean;
 
   @ApiProperty({ type: [String] })
   organizationIds!: string[];

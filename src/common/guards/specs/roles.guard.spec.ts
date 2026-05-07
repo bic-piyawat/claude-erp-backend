@@ -3,13 +3,18 @@ import { ExecutionContext, ForbiddenException } from '@nestjs/common';
 import { RolesGuard } from '../roles.guard';
 import { Role } from '../../enums/role.enum';
 
-function createMockContext(role: string | undefined): ExecutionContext {
+function createMockContext(
+  role: string | undefined,
+  isFounder = false,
+): ExecutionContext {
   return {
     switchToHttp: () => ({
       getRequest: () => ({
         user: role
-          ? { userId: 'u-1', organizationIds: ['org-1'], role }
-          : undefined,
+          ? { userId: 'u-1', organizationIds: ['org-1'], role, isFounder }
+          : isFounder
+            ? { userId: 'u-1', organizationIds: ['org-1'], isFounder }
+            : undefined,
       }),
     }),
     getHandler: () => jest.fn(),
@@ -75,6 +80,47 @@ describe('RolesGuard', () => {
       const context = createMockContext(undefined);
 
       expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+    });
+
+    describe('system-level FOUNDER bypass', () => {
+      it('should allow access when user.isFounder=true and Role.FOUNDER is required, regardless of Membership.role', () => {
+        reflector.getAllAndOverride.mockReturnValue([
+          Role.SUPER_ADMIN,
+          Role.FOUNDER,
+        ]);
+        // System founder whose membership in this org is just MEMBER —
+        // they should still be allowed because Role.FOUNDER is in the
+        // required list and isFounder=true bypasses per-org checks.
+        const context = createMockContext(Role.MEMBER, true);
+
+        expect(guard.canActivate(context)).toBe(true);
+      });
+
+      it('should allow access when user.isFounder=true and Role.FOUNDER is required even if user has no Membership.role', () => {
+        reflector.getAllAndOverride.mockReturnValue([Role.FOUNDER]);
+        const context = createMockContext(undefined, true);
+
+        expect(guard.canActivate(context)).toBe(true);
+      });
+
+      it('should NOT bypass when isFounder=true but Role.FOUNDER is NOT in the required list', () => {
+        // If the gate is e.g. only [SUPER_ADMIN], being a system founder
+        // does not auto-grant — the membership role must still match.
+        reflector.getAllAndOverride.mockReturnValue([Role.SUPER_ADMIN]);
+        const context = createMockContext(Role.MEMBER, true);
+
+        expect(() => guard.canActivate(context)).toThrow(ForbiddenException);
+      });
+
+      it('should still allow SUPER_ADMIN via Membership.role when Role.FOUNDER is in the required list and isFounder=false', () => {
+        reflector.getAllAndOverride.mockReturnValue([
+          Role.SUPER_ADMIN,
+          Role.FOUNDER,
+        ]);
+        const context = createMockContext(Role.SUPER_ADMIN, false);
+
+        expect(guard.canActivate(context)).toBe(true);
+      });
     });
   });
 });

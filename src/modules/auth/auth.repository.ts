@@ -8,6 +8,7 @@ export interface UserWithMemberships {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  isFounder: boolean;
   isDeleted: boolean;
   memberships: {
     organizationId: string;
@@ -22,6 +23,7 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  isFounder: boolean;
 }
 
 export interface MembershipDto {
@@ -46,6 +48,7 @@ export class AuthRepository {
         firstName: true,
         lastName: true,
         avatarUrl: true,
+        isFounder: true,
         isDeleted: true,
         memberships: {
           select: {
@@ -66,6 +69,7 @@ export class AuthRepository {
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
+      isFounder: user.isFounder,
       isDeleted: user.isDeleted,
       memberships: user.memberships.map((m) => ({
         organizationId: m.organizationId,
@@ -84,6 +88,7 @@ export class AuthRepository {
         firstName: true,
         lastName: true,
         avatarUrl: true,
+        isFounder: true,
       },
     });
 
@@ -95,6 +100,7 @@ export class AuthRepository {
       firstName: user.firstName,
       lastName: user.lastName,
       avatarUrl: user.avatarUrl,
+      isFounder: user.isFounder,
     };
   }
 
